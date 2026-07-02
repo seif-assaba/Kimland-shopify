@@ -1,0 +1,33 @@
+services:
+  - type: web
+    name: kimland-shopify-sync
+    runtime: docker
+    plan: free
+
+    envVars:
+      - key: NODE_ENV
+        value: production
+
+      - key: PORT
+        value: "10000"
+
+      - key: PLAYWRIGHT_HEADLESS
+        value: "true"
+
+      - key: SHOPIFY_STORE_URL
+        sync: false
+
+      - key: SHOPIFY_ADMIN_TOKEN
+        sync: false
+
+      - key: KIMLAND_USERNAME
+        sync: false
+
+      - key: KIMLAND_EMAIL
+        sync: false
+
+      - key: KIMLAND_PASSWORD
+        sync: false
+
+      - key: KIMLAND_LOGIN_URL
+        sync: false

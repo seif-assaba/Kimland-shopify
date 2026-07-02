@@ -1,0 +1,43 @@
+{
+  "7436": {
+    "shopifyId": 8635995390148,
+    "lastSync": "2026-07-02T23:21:47.088Z",
+    "productData": {
+      "kimlandId": "7436",
+      "url": "https://kimland.dz/product/7436/rider-street-slide-ad-bluebluegreen/",
+      "title": "RIDER STREET SLIDE AD BLUE/BLUE/GREEN",
+      "reference": "11578AR408",
+      "price": 3900,
+      "images": [
+        "https://kimland.dz/upload/93537071-96470397.jpg",
+        "https://kimland.dz/upload/64241172-18241875.jpg",
+        "https://kimland.dz/upload/44388192-77789707.jpg",
+        "https://kimland.dz/upload/44030498-58844828.jpg",
+        "https://kimland.dz/upload/60866311-09508985.jpg"
+      ],
+      "variantType": "pointure",
+      "variantLabel": "Pointure",
+      "variants": [
+        {
+          "value": "43",
+          "quantity": 11
+        },
+        {
+          "value": "44",
+          "quantity": 2
+        },
+        {
+          "value": "45",
+          "quantity": 1
+        }
+      ],
+      "totalStock": 14,
+      "imageCount": 5,
+      "variantCount": 3,
+      "uploaded": false,
+      "shopifyId": null,
+      "_isNew": true
+    },
+    "version": 4
+  }
+}

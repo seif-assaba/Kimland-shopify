@@ -1,0 +1,1861 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: #f0f4f8; color: #1a1a2e; min-height: 100vh; }
+    
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: #f0f4f8; }
+    ::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #4CAF50, #2196F3); border-radius: 10px; }
+    
+    .header { background: linear-gradient(135deg, #0f0c29, #302b63, #24243e); color: white; padding: 20px 40px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 30px rgba(0,0,0,0.3); position: sticky; top: 0; z-index: 100; backdrop-filter: blur(10px); }
+    .header .logo { display: flex; align-items: center; gap: 12px; }
+    .header .logo .logo-icon { font-size: 32px; background: rgba(76, 175, 80, 0.2); padding: 8px; border-radius: 12px; }
+    .header h1 { font-size: 24px; font-weight: 800; letter-spacing: -0.5px; }
+    .header h1 span { color: #4CAF50; }
+    .header .status { display: flex; align-items: center; gap: 20px; background: rgba(255,255,255,0.08); padding: 8px 20px; border-radius: 50px; backdrop-filter: blur(5px); }
+    .header .status .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; animation: pulse 2s infinite; }
+    .header .status .dot.green { background: #4CAF50; }
+    .version-badge { background: rgba(255,255,255,0.15); padding: 4px 14px; border-radius: 50px; font-size: 11px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; }
+    
+    @keyframes pulse { 0% { opacity: 1; transform: scale(1); } 50% { opacity: 0.6; transform: scale(0.9); } 100% { opacity: 1; transform: scale(1); } }
+    
+    .container { max-width: 1200px; margin: 0 auto; padding: 30px 20px; }
+    .card { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(20px); border-radius: 20px; padding: 30px 35px; margin-bottom: 25px; box-shadow: 0 8px 32px rgba(0,0,0,0.06); border: 1px solid rgba(255,255,255,0.5); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+    .card:hover { transform: translateY(-4px); box-shadow: 0 16px 48px rgba(0,0,0,0.1); }
+    .card .card-title { font-size: 18px; font-weight: 700; margin-bottom: 18px; color: #1a1a2e; display: flex; align-items: center; gap: 12px; }
+    .card .card-title .icon { font-size: 24px; background: linear-gradient(135deg, #4CAF50, #2196F3); width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; }
+    
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; }
+    @media (max-width: 768px) { .grid-2 { grid-template-columns: 1fr; } }
+    
+    .input-group { margin-bottom: 18px; }
+    .input-group label { display: block; font-weight: 600; margin-bottom: 8px; color: #1a1a2e; font-size: 14px; }
+    .input-group textarea { width: 100%; padding: 14px 18px; border: 2px solid rgba(0,0,0,0.06); border-radius: 12px; font-size: 15px; transition: all 0.3s; background: rgba(255,255,255,0.8); font-family: 'Inter', sans-serif; resize: vertical; min-height: 120px; }
+    .input-group textarea:focus { outline: none; border-color: #4CAF50; box-shadow: 0 0 0 4px rgba(76, 175, 80, 0.15); background: white; }
+    .input-group .char-count { font-size: 12px; color: #999; margin-top: 4px; text-align: right; }
+    
+    .btn { padding: 12px 28px; border: none; border-radius: 12px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); display: inline-flex; align-items: center; gap: 8px; font-family: 'Inter', sans-serif; }
+    .btn:hover { transform: translateY(-2px); }
+    .btn:active { transform: scale(0.97); }
+    .btn-primary { background: linear-gradient(135deg, #4CAF50, #43A047); color: white; box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3); }
+    .btn-primary:hover { box-shadow: 0 6px 25px rgba(76, 175, 80, 0.4); }
+    .btn-primary:disabled { background: #a5d6a7; cursor: not-allowed; box-shadow: none; transform: none; }
+    .btn-success { background: linear-gradient(135deg, #2196F3, #1E88E5); color: white; box-shadow: 0 4px 15px rgba(33, 150, 243, 0.3); }
+    .btn-success:hover { box-shadow: 0 6px 25px rgba(33, 150, 243, 0.4); }
+    .btn-success:disabled { background: #90caf9; cursor: not-allowed; box-shadow: none; transform: none; }
+    .btn-warning { background: linear-gradient(135deg, #FF9800, #F57C00); color: white; box-shadow: 0 4px 15px rgba(255, 152, 0, 0.3); }
+    .btn-warning:hover { box-shadow: 0 6px 25px rgba(255, 152, 0, 0.4); }
+    .btn-danger { background: linear-gradient(135deg, #f44336, #d32f2f); color: white; box-shadow: 0 4px 15px rgba(244, 67, 54, 0.3); }
+    .btn-danger:hover { box-shadow: 0 6px 25px rgba(244, 67, 54, 0.4); }
+    .btn-export { background: linear-gradient(135deg, #9C27B0, #7B1FA2); color: white; box-shadow: 0 4px 15px rgba(156, 39, 176, 0.3); }
+    .btn-export:hover { box-shadow: 0 6px 25px rgba(156, 39, 176, 0.4); }
+    .btn-export:disabled { background: #ce93d8; cursor: not-allowed; box-shadow: none; transform: none; }
+    .btn-bulk { background: linear-gradient(135deg, #E91E63, #C2185B); color: white; box-shadow: 0 4px 15px rgba(233, 30, 99, 0.3); }
+    .btn-bulk:hover { box-shadow: 0 6px 25px rgba(233, 30, 99, 0.4); }
+    .btn-bulk:disabled { background: #f48fb1; cursor: not-allowed; box-shadow: none; transform: none; }
+    .btn-sync { background: linear-gradient(135deg, #FF6F00, #E65100); color: white; box-shadow: 0 4px 15px rgba(255, 111, 0, 0.3); }
+    .btn-sync:hover { box-shadow: 0 6px 25px rgba(255, 111, 0, 0.4); }
+    .btn-sync:disabled { background: #ffb74d; cursor: not-allowed; box-shadow: none; transform: none; }
+    .btn-get { background: linear-gradient(135deg, #00695C, #004D40); color: white; box-shadow: 0 4px 15px rgba(0, 105, 92, 0.3); }
+    .btn-get:hover { box-shadow: 0 6px 25px rgba(0, 105, 92, 0.4); }
+    .btn-get:disabled { background: #80cbc4; cursor: not-allowed; box-shadow: none; transform: none; }
+    .btn-refresh { background: linear-gradient(135deg, #455A64, #37474F); color: white; box-shadow: 0 4px 15px rgba(69, 90, 100, 0.3); }
+    .btn-refresh:hover { box-shadow: 0 6px 25px rgba(69, 90, 100, 0.4); }
+    .btn-group { display: flex; gap: 12px; flex-wrap: wrap; }
+    
+    .alert { padding: 16px 22px; border-radius: 12px; margin-bottom: 18px; display: none; font-weight: 500; }
+    .alert.show { display: block; animation: slideUp 0.3s ease; }
+    .alert-success { background: linear-gradient(135deg, #e8f5e9, #c8e6c9); border-left: 4px solid #4CAF50; color: #1a1a2e; }
+    .alert-danger { background: linear-gradient(135deg, #ffebee, #ffcdd2); border-left: 4px solid #f44336; color: #1a1a2e; }
+    .alert-info { background: linear-gradient(135deg, #e3f2fd, #bbdefb); border-left: 4px solid #2196F3; color: #1a1a2e; }
+    
+    .progress-container { display: none; margin-top: 18px; }
+    .progress-container.show { display: block; }
+    .progress-bar { width: 100%; height: 10px; background: rgba(0,0,0,0.06); border-radius: 50px; overflow: hidden; }
+    .progress-bar .fill { height: 100%; background: linear-gradient(90deg, #4CAF50, #2196F3); width: 0%; border-radius: 50px; transition: width 0.5s; }
+    .progress-text { font-size: 13px; color: #888; margin-top: 6px; font-weight: 500; }
+    
+    .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 15px; margin-top: 10px; }
+    .stat-item { text-align: center; padding: 20px; background: linear-gradient(135deg, rgba(255,255,255,0.8), rgba(248,249,250,0.6)); border-radius: 16px; border: 1px solid rgba(0,0,0,0.04); transition: all 0.3s; }
+    .stat-item:hover { transform: translateY(-4px); box-shadow: 0 8px 25px rgba(0,0,0,0.06); }
+    .stat-item .number { font-size: 32px; font-weight: 800; background: linear-gradient(135deg, #4CAF50, #2196F3); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .stat-item .stat-label { font-size: 12px; color: #888; margin-top: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+    
+    .status-list { color: #666; line-height: 2.2; }
+    .status-list p { display: flex; align-items: center; gap: 10px; }
+    .status-list .status-icon { font-size: 18px; }
+    
+    /* ===== TWO SECTION PRODUCTS ===== */
+    .section-divider {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      margin: 20px 0 15px 0;
+    }
+    .section-divider .line {
+      flex: 1;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, #4CAF50, transparent);
+    }
+    .section-divider .label {
+      font-size: 14px;
+      font-weight: 700;
+      color: #1a1a2e;
+      white-space: nowrap;
+      padding: 4px 16px;
+      background: linear-gradient(135deg, #4CAF50, #2196F3);
+      color: white;
+      border-radius: 50px;
+    }
+    
+    .products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 20px; margin-top: 15px; }
+    @media (max-width: 768px) { .products-grid { grid-template-columns: 1fr; } }
+    
+    .product-card {
+      background: white;
+      border-radius: 16px;
+      padding: 20px;
+      border: 1px solid rgba(0,0,0,0.06);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+      animation: fadeInUp 0.3s ease;
+    }
+    
+    .product-card.extracted {
+      border-left: 4px solid #4CAF50;
+    }
+    .product-card.shopify {
+      border-left: 4px solid #2196F3;
+    }
+    
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    .product-card:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(0,0,0,0.08); }
+    .product-card .product-title { font-size: 16px; font-weight: 700; color: #1a1a2e; margin-bottom: 8px; }
+    .product-card .product-ref { font-size: 13px; color: #888; margin-bottom: 8px; }
+    .product-card .product-prices { display: flex; gap: 12px; margin-bottom: 8px; flex-wrap: wrap; align-items: center; }
+    .product-card .product-prices .price { color: #4CAF50; font-weight: 700; font-size: 18px; }
+    .product-card .product-prices .cost { color: #f44336; font-weight: 600; font-size: 14px; text-decoration: none; }
+    .product-card .product-stock { font-size: 13px; color: #666; margin-bottom: 8px; }
+    .product-card .product-stock strong { color: #1a1a2e; }
+    .product-card .product-variants { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .product-card .product-variants .variant-tag { background: #f0f4f8; padding: 4px 12px; border-radius: 50px; font-size: 12px; font-weight: 500; border: 1px solid rgba(0,0,0,0.04); }
+    .product-card .product-variants .variant-tag .qty { color: #4CAF50; font-weight: 700; }
+    .product-card .product-images-preview { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+    .product-card .product-images-preview img { width: 45px; height: 45px; border-radius: 6px; object-fit: cover; border: 1px solid #eee; cursor: pointer; transition: transform 0.2s; }
+    .product-card .product-images-preview img:hover { transform: scale(1.1); }
+    .product-card .product-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; align-items: center; }
+    .product-card .product-actions .btn-sm { padding: 6px 14px; font-size: 12px; border-radius: 8px; border: none; font-weight: 600; cursor: pointer; transition: all 0.2s; font-family: 'Inter', sans-serif; }
+    .product-card .product-actions .btn-sm:hover { transform: translateY(-1px); }
+    .btn-sm-upload { background: #2196F3; color: white; }
+    .btn-sm-upload:hover { background: #1976D2; }
+    .btn-sm-upload:disabled { background: #90caf9; cursor: not-allowed; }
+    .btn-sm-csv { background: #9C27B0; color: white; }
+    .btn-sm-csv:hover { background: #7B1FA2; }
+    .btn-sm-csv:disabled { background: #ce93d8; cursor: not-allowed; }
+    .btn-sm-sync { background: #FF6F00; color: white; }
+    .btn-sm-sync:hover { background: #E65100; }
+    .btn-sm-sync:disabled { background: #ffb74d; cursor: not-allowed; }
+    .badge-status { font-size: 11px; font-weight: 600; padding: 3px 12px; border-radius: 50px; display: inline-block; }
+    .badge-ready { background: #e8f5e9; color: #2e7d32; }
+    .badge-uploaded { background: #e3f2fd; color: #0d47a1; }
+    .badge-uploading { background: #fff3e0; color: #e65100; }
+    .badge-exists { background: #fff3e0; color: #e65100; }
+    .badge-new { background: #fce4ec; color: #c62828; animation: pulseBadge 1s ease; }
+    
+    @keyframes pulseBadge {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+      100% { transform: scale(1); }
+    }
+    
+    .empty-section {
+      text-align: center;
+      padding: 30px 20px;
+      color: #999;
+      background: rgba(255,255,255,0.5);
+      border-radius: 12px;
+      border: 2px dashed #e0e0e0;
+    }
+    .empty-section .empty-icon {
+      font-size: 40px;
+      margin-bottom: 10px;
+    }
+    .empty-section .empty-text {
+      font-size: 14px;
+    }
+    
+    /* ===== LIGHTBOX WITH SMALLER BUTTONS ===== */
+    .lightbox-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.92); z-index: 9999; justify-content: center; align-items: center; cursor: pointer; backdrop-filter: blur(10px); }
+    .lightbox-overlay.show { display: flex; }
+    .lightbox-content { max-width: 90%; max-height: 90%; background: white; border-radius: 20px; padding: 25px; position: relative; cursor: default; box-shadow: 0 32px 80px rgba(0,0,0,0.5); }
+    .lightbox-content img { max-width: 100%; max-height: 70vh; border-radius: 12px; display: block; margin: 0 auto; }
+    .lightbox-close { position: absolute; top: -18px; right: -18px; width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(135deg, #f44336, #d32f2f); color: white; border: none; font-size: 24px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.3s; box-shadow: 0 4px 15px rgba(244, 67, 54, 0.3); }
+    .lightbox-close:hover { transform: scale(1.1) rotate(90deg); }
+    
+    .lightbox-nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 18px;
+      gap: 15px;
+      padding: 0 10px;
+    }
+    
+    .lightbox-nav button {
+      padding: 6px 16px;
+      border: none;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      font-family: 'Inter', sans-serif;
+    }
+    
+    .lightbox-nav .prev-btn {
+      background: linear-gradient(135deg, #2196F3, #1E88E5);
+      color: white;
+      box-shadow: 0 4px 15px rgba(33, 150, 243, 0.3);
+    }
+    
+    .lightbox-nav .prev-btn:hover {
+      transform: translateX(-3px);
+      box-shadow: 0 6px 20px rgba(33, 150, 243, 0.4);
+    }
+    
+    .lightbox-nav .next-btn {
+      background: linear-gradient(135deg, #4CAF50, #43A047);
+      color: white;
+      box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+    }
+    
+    .lightbox-nav .next-btn:hover {
+      transform: translateX(3px);
+      box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+    }
+    
+    .lightbox-nav .counter {
+      color: #666;
+      font-size: 14px;
+      font-weight: 600;
+      min-width: 50px;
+      text-align: center;
+    }
+    
+    .back-to-top {
+      position: fixed;
+      bottom: 30px;
+      right: 30px;
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #4CAF50, #2196F3);
+      color: white;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(20px);
+      z-index: 999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .back-to-top.show { opacity: 1; visibility: visible; transform: translateY(0); }
+    .back-to-top:hover { transform: translateY(-4px) scale(1.05); box-shadow: 0 8px 30px rgba(76, 175, 80, 0.5); }
+    .back-to-top:active { transform: scale(0.95); }
+
+    /* ===== SIMPLE POPUP NOTIFICATION ===== */
+    .popup-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(4px);
+      z-index: 99999;
+      justify-content: center;
+      align-items: center;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .popup-overlay.show {
+      display: flex;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes slideDown {
+      from {
+        opacity: 0;
+        transform: translateY(-30px) scale(0.95);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .popup-box {
+      background: white;
+      border-radius: 24px;
+      padding: 40px 45px;
+      max-width: 500px;
+      width: 90%;
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.3);
+      animation: slideDown 0.3s ease;
+      position: relative;
+    }
+
+    .popup-box .popup-icon {
+      font-size: 56px;
+      text-align: center;
+      margin-bottom: 16px;
+    }
+
+    .popup-box .popup-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: #1a1a2e;
+      text-align: center;
+      margin-bottom: 8px;
+    }
+
+    .popup-box .popup-message {
+      font-size: 15px;
+      color: #666;
+      text-align: center;
+      line-height: 1.6;
+      margin-bottom: 24px;
+      word-break: break-word;
+    }
+
+    .popup-box .popup-message .highlight {
+      font-weight: 600;
+      color: #1a1a2e;
+    }
+
+    .popup-box .popup-btn {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.3s;
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, #4CAF50, #43A047);
+      color: white;
+      box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+    }
+
+    .popup-box .popup-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 25px rgba(76, 175, 80, 0.4);
+    }
+
+    .popup-box .popup-btn:active {
+      transform: scale(0.97);
+    }
+
+    .popup-box .popup-btn.error {
+      background: linear-gradient(135deg, #f44336, #d32f2f);
+      box-shadow: 0 4px 15px rgba(244, 67, 54, 0.3);
+    }
+
+    .popup-box .popup-btn.error:hover {
+      box-shadow: 0 6px 25px rgba(244, 67, 54, 0.4);
+    }
+
+    .popup-box .popup-btn.warning {
+      background: linear-gradient(135deg, #FF9800, #F57C00);
+      box-shadow: 0 4px 15px rgba(255, 152, 0, 0.3);
+    }
+
+    .popup-box .popup-btn.warning:hover {
+      box-shadow: 0 6px 25px rgba(255, 152, 0, 0.4);
+    }
+
+    .popup-box .popup-btn.hidden {
+      display: none;
+    }
+
+    .popup-box .popup-progress {
+      margin: 16px 0 20px 0;
+    }
+
+    .popup-box .popup-progress .progress-text {
+      font-size: 14px;
+      font-weight: 600;
+      color: #1a1a2e;
+      text-align: center;
+      margin-bottom: 8px;
+    }
+
+    .popup-box .popup-progress .progress-track {
+      width: 100%;
+      height: 8px;
+      background: #e9ecef;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .popup-box .popup-progress .progress-track .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #4CAF50, #2196F3);
+      border-radius: 10px;
+      transition: width 0.5s ease;
+      width: 0%;
+    }
+
+    .popup-box .popup-items {
+      max-height: 200px;
+      overflow-y: auto;
+      margin: 12px 0 16px 0;
+      padding: 0 4px;
+    }
+
+    .popup-box .popup-items::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .popup-box .popup-items::-webkit-scrollbar-thumb {
+      background: #4CAF50;
+      border-radius: 10px;
+    }
+
+    .popup-box .popup-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      background: #f8fafc;
+      border-radius: 8px;
+      margin-bottom: 6px;
+      font-size: 13px;
+      color: #1a1a2e;
+      animation: slideInItem 0.3s ease;
+    }
+
+    .popup-box .popup-item .item-icon {
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+
+    .popup-box .popup-item .item-text {
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .popup-box .popup-item .item-status {
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+
+    @keyframes slideInItem {
+      from {
+        opacity: 0;
+        transform: translateX(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    @media (max-width: 600px) {
+      .popup-box {
+        padding: 30px 24px;
+        max-width: 95%;
+      }
+      .popup-box .popup-icon {
+        font-size: 40px;
+      }
+      .popup-box .popup-title {
+        font-size: 18px;
+      }
+      .popup-box .popup-message {
+        font-size: 14px;
+      }
+      
+      .lightbox-nav button {
+        padding: 4px 12px;
+        font-size: 12px;
+      }
+      .lightbox-nav .counter {
+        font-size: 12px;
+        min-width: 40px;
+      }
+    }
+    
+    @media (max-width: 768px) {
+      .header { flex-direction: column; gap: 12px; text-align: center; padding: 16px 20px; }
+      .header .status { font-size: 13px; padding: 6px 16px; }
+      .card { padding: 20px; }
+      .btn { width: 100%; justify-content: center; }
+      .products-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 480px) {
+      .header h1 { font-size: 18px; }
+      .header .status { flex-wrap: wrap; justify-content: center; }
+      .card { padding: 16px; }
+      .btn-group { gap: 8px; }
+      .btn { font-size: 13px; padding: 10px 16px; }
+    }
+
+    /* ===== PAGINATION STYLES ===== */
+    .pagination-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 20px;
+      padding-top: 15px;
+      border-top: 1px solid #e9ecef;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    
+    .pagination-container .info {
+      font-size: 14px;
+      color: #888;
+    }
+    
+    .pagination-container .info strong {
+      color: #1a1a2e;
+    }
+    
+    .pagination-controls {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    
+    .pagination-controls .page-btn {
+      padding: 8px 16px;
+      border: 1px solid #e9ecef;
+      border-radius: 8px;
+      background: white;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.2s;
+      font-family: 'Inter', sans-serif;
+    }
+    
+    .pagination-controls .page-btn:hover:not(:disabled) {
+      background: #f0f4f8;
+      border-color: #4CAF50;
+    }
+    
+    .pagination-controls .page-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    .pagination-controls .page-btn.active {
+      background: #4CAF50;
+      color: white;
+      border-color: #4CAF50;
+    }
+    
+    .pagination-controls .page-btn.active:hover {
+      background: #43A047;
+    }
+    
+    .pagination-controls .page-numbers {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+    }
+    
+    .pagination-controls .page-numbers .page-num {
+      padding: 6px 12px;
+      border: 1px solid #e9ecef;
+      border-radius: 6px;
+      background: white;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.2s;
+      font-family: 'Inter', sans-serif;
+      min-width: 36px;
+      text-align: center;
+    }
+    
+    .pagination-controls .page-numbers .page-num:hover:not(.active):not(:disabled) {
+      background: #f0f4f8;
+    }
+    
+    .pagination-controls .page-numbers .page-num.active {
+      background: #4CAF50;
+      color: white;
+      border-color: #4CAF50;
+    }
+    
+    .pagination-controls .page-numbers .ellipsis {
+      padding: 0 4px;
+      color: #888;
+    }
+    
+    @media (max-width: 768px) {
+      .pagination-container {
+        flex-direction: column;
+        align-items: center;
+      }
+      .pagination-controls .page-numbers .page-num {
+        padding: 4px 8px;
+        font-size: 12px;
+        min-width: 30px;
+      }
+      .pagination-controls .page-btn {
+        padding: 6px 12px;
+        font-size: 12px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <header class="header">
+    <div class="logo">
+      <span class="logo-icon">🔄</span>
+      <h1>Kimland <span>→</span> Shopify</h1>
+    </div>
+    <div class="status">
+      <span>🟢 En ligne</span>
+      <span class="dot green"></span>
+      <span class="version-badge">v<%= version %></span>
+    </div>
+  </header>
+
+  <!-- ===== SIMPLE POPUP NOTIFICATION ===== -->
+  <div class="popup-overlay" id="popupOverlay">
+    <div class="popup-box" id="popupBox">
+      <div class="popup-icon" id="popupIcon">✅</div>
+      <div class="popup-title" id="popupTitle">Succès</div>
+      <div class="popup-message" id="popupMessage">Opération terminée avec succès !</div>
+      <div class="popup-progress" id="popupProgress" style="display:none;">
+        <div class="progress-text" id="popupProgressText">Traitement en cours...</div>
+        <div class="progress-track">
+          <div class="progress-fill" id="popupProgressFill" style="width: 0%;"></div>
+        </div>
+      </div>
+      <div class="popup-items" id="popupItems"></div>
+      <button class="popup-btn" id="popupBtn" onclick="closePopup()">OK, compris !</button>
+    </div>
+  </div>
+
+  <div class="container">
+
+    <div id="alert" class="alert"></div>
+
+    <div class="card">
+      <div class="card-title">
+        <span class="icon">📦</span>
+        Ajouter des produits (jusqu'à 10)
+      </div>
+      <p style="color:#888;margin-bottom:18px;font-weight:400;">
+        Entrez jusqu'à 10 URLs de produits Kimland (une par ligne) pour les extraire et les gérer.
+      </p>
+
+      <div class="input-group">
+        <label for="bulkUrls">🔗 URLs des produits (une par ligne)</label>
+        <textarea id="bulkUrls" rows="6" placeholder="ajoutez les URLs ici..."></textarea>
+        <div class="char-count"><span id="urlCount">0</span> / 10 URLs</div>
+      </div>
+
+      <div class="btn-group">
+        <button class="btn btn-bulk" id="extractBtn" onclick="extractProducts()">🔍 Extraire les produits</button>
+        <button class="btn btn-success" id="uploadAllBtn" onclick="uploadAll()" disabled>📤 Tout importer</button>
+        <button class="btn btn-get" id="getProductsBtn" onclick="loadShopifyProducts()">📦 Récupérer les produits</button>
+        <button class="btn btn-refresh" id="refreshBtn" onclick="refreshStatus()">🔄 Rafraîchir</button>
+        <button class="btn btn-danger" id="clearBtn" onclick="clearAll()">🗑️ Tout effacer</button>
+      </div>
+
+      <div class="progress-container" id="progressContainer">
+        <div class="progress-bar">
+          <div class="fill" id="progressFill"></div>
+        </div>
+        <div class="progress-text" id="progressText">Traitement en cours...</div>
+      </div>
+    </div>
+
+    <!-- ===== TWO SECTION PRODUCT DISPLAY ===== -->
+    <div class="card" id="productsCard" style="display:none;">
+      <div class="card-title">
+        <span class="icon">📋</span>
+        Produits
+        <span id="productCount" style="font-size:14px;color:#888;font-weight:400;margin-left:8px;">0 produits</span>
+      </div>
+
+      <!-- SECTION 1: Extracted Products (Not in Shopify) -->
+      <div id="extractedSection">
+        <div class="section-divider">
+          <span class="line"></span>
+          <span class="label">📤 Extrait - Prêt à importer</span>
+          <span class="line"></span>
+        </div>
+        <div id="extractedGrid" class="products-grid"></div>
+      </div>
+
+      <!-- SECTION 2: Shopify Products with Pagination -->
+      <div id="shopifySection">
+        <div class="section-divider">
+          <span class="line"></span>
+          <span class="label">✅ Dans Shopify</span>
+          <span class="line"></span>
+        </div>
+        <div id="shopifyGrid" class="products-grid"></div>
+        
+        <!-- Pagination Controls -->
+        <div class="pagination-container" id="paginationContainer" style="display:none;">
+          <div class="info" id="paginationInfo">
+            Affichage de <strong id="startCount">0</strong> à <strong id="endCount">0</strong> sur <strong id="totalCount">0</strong> produits
+          </div>
+          <div class="pagination-controls">
+            <button class="page-btn" id="prevPageBtn" onclick="changePage('prev')">◀ Précédent</button>
+            <div class="page-numbers" id="pageNumbers"></div>
+            <button class="page-btn" id="nextPageBtn" onclick="changePage('next')">Suivant ▶</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">
+          <span class="icon">📊</span>
+          Statistiques
+        </div>
+        <div class="stat-grid">
+          <div class="stat-item">
+            <div class="number" id="totalProducts">0</div>
+            <div class="stat-label">Total produits</div>
+          </div>
+          <div class="stat-item">
+            <div class="number" id="totalExtracted">0</div>
+            <div class="stat-label">Extraits</div>
+          </div>
+          <div class="stat-item">
+            <div class="number" id="totalShopify">0</div>
+            <div class="stat-label">Dans Shopify</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <span class="icon">⚙️</span>
+          Statut
+        </div>
+        <div class="status-list">
+          <p><span class="status-icon">✅</span> <span style="color:#4CAF50;">Connecté à Kimland</span></p>
+          <p id="shopifyStatus">
+            <span class="status-icon">
+              <% if (shopifyConfigured) { %>✅<% } else { %>⏳<% } %>
+            </span>
+            <% if (shopifyConfigured) { %>
+              <span style="color:#4CAF50;">Shopify connecté</span>
+            <% } else { %>
+              <span style="color:#ff9800;">Shopify : Non configuré</span>
+            <% } %>
+          </p>
+          <p><span class="status-icon">📁</span> Produits extraits : <strong id="extractedCount">0</strong></p>
+          <p><span class="status-icon">💡</span> <span style="color:#888;font-size:13px;">Modifiez le fichier .env pour configurer Shopify</span></p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ===== LIGHTBOX WITH SMALLER BUTTONS ===== -->
+  <div class="lightbox-overlay" id="lightbox" onclick="closeLightbox(event)">
+    <div class="lightbox-content" onclick="event.stopPropagation()">
+      <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+      <img id="lightboxImg" src="" alt="Image du produit">
+      <div class="lightbox-nav">
+        <button class="prev-btn" onclick="prevImage()">◀ Précédent</button>
+        <span class="counter" id="imageCounter">1 / 1</span>
+        <button class="next-btn" onclick="nextImage()">Suivant ▶</button>
+      </div>
+    </div>
+  </div>
+
+  <button class="back-to-top" id="backToTop" onclick="scrollToTop()" aria-label="Retour en haut">
+    ↑
+  </button>
+
+  <script>
+    let products = [];
+    let galleryImages = [];
+    let currentImageIndex = 0;
+    let shopifySkuCache = null;
+    let popupResolve = null;
+    
+    // ===== PAGINATION VARIABLES =====
+    let currentPage = 1;
+    const itemsPerPage = 50;
+    let totalShopifyProducts = 0;
+    let totalPages = 0;
+
+    // =============================================
+    // URL COUNTER
+    // =============================================
+    document.getElementById('bulkUrls').addEventListener('input', function() {
+      var urls = this.value.split('\n')
+        .map(function(url) { return url.trim(); })
+        .filter(function(url) { return url.length > 0; });
+      document.getElementById('urlCount').textContent = urls.length;
+    });
+
+    // =============================================
+    // SIMPLE POPUP NOTIFICATION
+    // =============================================
+    function showPopup(title, message, icon = '✅', type = 'success', items = []) {
+      return new Promise((resolve) => {
+        const overlay = document.getElementById('popupOverlay');
+        const titleEl = document.getElementById('popupTitle');
+        const messageEl = document.getElementById('popupMessage');
+        const iconEl = document.getElementById('popupIcon');
+        const btn = document.getElementById('popupBtn');
+        const progressEl = document.getElementById('popupProgress');
+        const itemsEl = document.getElementById('popupItems');
+
+        progressEl.style.display = 'none';
+        itemsEl.innerHTML = '';
+        btn.className = 'popup-btn';
+        
+        if (type === 'error') {
+          btn.classList.add('error');
+        } else if (type === 'warning') {
+          btn.classList.add('warning');
+        }
+
+        iconEl.textContent = icon;
+        titleEl.textContent = title;
+        messageEl.innerHTML = message;
+        btn.textContent = 'OK, compris !';
+
+        if (items && items.length > 0) {
+          let itemsHTML = '';
+          items.forEach(item => {
+            const statusIcon = item.type === 'error' ? '❌' : item.type === 'warning' ? '⚠️' : '✅';
+            itemsHTML += `
+              <div class="popup-item">
+                <span class="item-icon">${item.icon || statusIcon}</span>
+                <span class="item-text">${item.message}</span>
+                <span class="item-status">${statusIcon}</span>
+              </div>
+            `;
+          });
+          itemsEl.innerHTML = itemsHTML;
+        }
+
+        overlay.classList.add('show');
+        document.body.style.overflow = 'hidden';
+
+        popupResolve = resolve;
+      });
+    }
+
+    function showPopupProgress(current, total, label = 'Traitement en cours...') {
+      const progressEl = document.getElementById('popupProgress');
+      const fillEl = document.getElementById('popupProgressFill');
+      const textEl = document.getElementById('popupProgressText');
+      
+      progressEl.style.display = 'block';
+      const percent = Math.round((current / total) * 100);
+      fillEl.style.width = percent + '%';
+      textEl.textContent = label + ' (' + current + '/' + total + ')';
+    }
+
+    function hidePopupProgress() {
+      document.getElementById('popupProgress').style.display = 'none';
+    }
+
+    function closePopup() {
+      const overlay = document.getElementById('popupOverlay');
+      overlay.classList.remove('show');
+      document.body.style.overflow = 'auto';
+      if (popupResolve) {
+        popupResolve();
+        popupResolve = null;
+      }
+    }
+
+    // =============================================
+    // DELAY HELPER
+    // =============================================
+    function delay(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    // =============================================
+    // BACK TO TOP
+    // =============================================
+    function scrollToTop() {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    window.addEventListener('scroll', function() {
+      var btn = document.getElementById('backToTop');
+      if (window.scrollY > 300) {
+        btn.classList.add('show');
+      } else {
+        btn.classList.remove('show');
+      }
+    });
+
+    window.addEventListener('load', function() {
+      var btn = document.getElementById('backToTop');
+      if (window.scrollY <= 300) {
+        btn.classList.remove('show');
+      }
+    });
+
+    // =============================================
+    // STORAGE HELPERS
+    // =============================================
+    function saveProductsToStorage() {
+      try {
+        localStorage.setItem('kimland_products', JSON.stringify(products));
+      } catch (e) {
+        console.error('Échec de la sauvegarde des produits:', e);
+      }
+    }
+
+    function loadProductsFromStorage() {
+      try {
+        var stored = localStorage.getItem('kimland_products');
+        if (stored) {
+          products = JSON.parse(stored);
+          products.forEach(function(p) {
+            if (p.uploaded === undefined) p.uploaded = false;
+            p._isNew = false;
+          });
+          return true;
+        }
+      } catch (e) {
+        console.error('Échec du chargement des produits:', e);
+      }
+      return false;
+    }
+
+    // =============================================
+    // LIGHTBOX
+    // =============================================
+    function openLightbox(images, index) {
+      galleryImages = images;
+      currentImageIndex = index;
+      var lightbox = document.getElementById('lightbox');
+      var img = document.getElementById('lightboxImg');
+      var counter = document.getElementById('imageCounter');
+
+      if (!images || images.length === 0) return;
+      img.src = images[index];
+      counter.textContent = (index + 1) + ' / ' + images.length;
+      lightbox.classList.add('show');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeLightbox(event) {
+      if (event && event.target !== event.currentTarget) return;
+      document.getElementById('lightbox').classList.remove('show');
+      document.body.style.overflow = 'auto';
+    }
+
+    function prevImage() {
+      if (galleryImages.length === 0) return;
+      currentImageIndex = (currentImageIndex - 1 + galleryImages.length) % galleryImages.length;
+      document.getElementById('lightboxImg').src = galleryImages[currentImageIndex];
+      document.getElementById('imageCounter').textContent = (currentImageIndex + 1) + ' / ' + galleryImages.length;
+    }
+
+    function nextImage() {
+      if (galleryImages.length === 0) return;
+      currentImageIndex = (currentImageIndex + 1) % galleryImages.length;
+      document.getElementById('lightboxImg').src = galleryImages[currentImageIndex];
+      document.getElementById('imageCounter').textContent = (currentImageIndex + 1) + ' / ' + galleryImages.length;
+    }
+
+    document.addEventListener('keydown', function(e) {
+      if (!document.getElementById('lightbox').classList.contains('show')) return;
+      if (e.key === 'Escape') closeLightbox();
+      if (e.key === 'ArrowLeft') prevImage();
+      if (e.key === 'ArrowRight') nextImage();
+    });
+
+    // =============================================
+    // ALERT & PROGRESS
+    // =============================================
+    function showAlert(message, type) {
+      type = type || 'success';
+      var alert = document.getElementById('alert');
+      alert.className = 'alert alert-' + type + ' show';
+      alert.textContent = message;
+      setTimeout(function() { alert.classList.remove('show'); }, 5000);
+    }
+
+    function showProgress(show, text) {
+      text = text || 'Traitement en cours...';
+      var container = document.getElementById('progressContainer');
+      var fill = document.getElementById('progressFill');
+      var textEl = document.getElementById('progressText');
+      if (show) {
+        container.classList.add('show');
+        fill.style.width = '0%';
+        textEl.textContent = text;
+      } else {
+        container.classList.remove('show');
+        fill.style.width = '0%';
+      }
+    }
+
+    function updateProgress(current, total) {
+      var percent = Math.round((current / total) * 100);
+      document.getElementById('progressFill').style.width = percent + '%';
+      document.getElementById('progressText').textContent = 'Traitement ' + current + '/' + total + '...';
+    }
+
+    // =============================================
+    // FETCH SHOPIFY PRODUCTS AND CACHE SKUS
+    // =============================================
+    async function fetchShopifySkus() {
+      if (shopifySkuCache) return shopifySkuCache;
+      
+      try {
+        var response = await fetch('/api/shopify-products');
+        var data = await response.json();
+        
+        var skus = new Set();
+        var titles = new Set();
+        
+        if (data.success && data.products.length > 0) {
+          data.products.forEach(function(p) {
+            if (p.variants) {
+              p.variants.forEach(function(v) {
+                if (v.sku) skus.add(v.sku);
+              });
+            }
+            titles.add(p.title);
+          });
+        }
+        
+        shopifySkuCache = { skus: skus, titles: titles };
+        return shopifySkuCache;
+      } catch (error) {
+        console.error('Échec de la récupération des SKUs Shopify:', error);
+        return { skus: new Set(), titles: new Set() };
+      }
+    }
+
+    // =============================================
+    // CHECK IF PRODUCT EXISTS IN SHOPIFY
+    // =============================================
+    async function checkProductExists(sku, title) {
+      var cache = await fetchShopifySkus();
+      
+      if (sku && cache.skus.has(sku)) {
+        return true;
+      }
+      
+      if (title) {
+        for (var t of cache.titles) {
+          if (t.includes(title) || title.includes(t)) {
+            return true;
+          }
+        }
+      }
+      
+      return false;
+    }
+
+    // =============================================
+    // RENDER PRODUCTS - WITH PAGINATION
+    // =============================================
+    function renderProducts() {
+      var card = document.getElementById('productsCard');
+      var count = document.getElementById('productCount');
+      var extractedGrid = document.getElementById('extractedGrid');
+      var shopifyGrid = document.getElementById('shopifyGrid');
+
+      // Sort products by creation date (newest first)
+      var sortedProducts = [...products].sort(function(a, b) {
+        if (a.createdAt && b.createdAt) {
+          return new Date(b.createdAt) - new Date(a.createdAt);
+        }
+        if (a.createdAt && !b.createdAt) return -1;
+        if (!a.createdAt && b.createdAt) return 1;
+        var aIndex = products.indexOf(a);
+        var bIndex = products.indexOf(b);
+        return bIndex - aIndex;
+      });
+
+      // Split sorted products into two arrays
+      var extractedProducts = sortedProducts.filter(function(p) { 
+        return !p.shopifyId; 
+      });
+      var shopifyProducts = sortedProducts.filter(function(p) { 
+        return p.shopifyId; 
+      });
+
+      if (products.length === 0) {
+        card.style.display = 'none';
+        document.getElementById('extractedCount').textContent = '0';
+        saveProductsToStorage();
+        return;
+      }
+
+      card.style.display = 'block';
+      count.textContent = products.length + ' produits';
+      document.getElementById('extractedCount').textContent = products.length;
+
+      // Update stats
+      document.getElementById('totalProducts').textContent = products.length;
+      document.getElementById('totalExtracted').textContent = extractedProducts.length;
+      document.getElementById('totalShopify').textContent = shopifyProducts.length;
+
+      // Render Extracted Products (top section)
+      if (extractedProducts.length === 0) {
+        extractedGrid.innerHTML = `
+          <div class="empty-section">
+            <div class="empty-icon">📤</div>
+            <div class="empty-text">Aucun produit extrait. Entrez des URLs et cliquez sur "Extraire les produits"</div>
+          </div>
+        `;
+      } else {
+        var extractedHtml = '';
+        extractedProducts.forEach(function(product) {
+          var index = products.indexOf(product);
+          extractedHtml += createProductCard(product, index, 'extracted');
+        });
+        extractedGrid.innerHTML = extractedHtml;
+      }
+
+      // Render Shopify Products (bottom section) with pagination
+      if (shopifyProducts.length === 0) {
+        shopifyGrid.innerHTML = `
+          <div class="empty-section">
+            <div class="empty-icon">✅</div>
+            <div class="empty-text">Aucun produit dans Shopify. Cliquez sur "Récupérer les produits" pour les charger.</div>
+          </div>
+        `;
+        document.getElementById('paginationContainer').style.display = 'none';
+      } else {
+        // Get current page products
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        const endIndex = Math.min(startIndex + itemsPerPage, shopifyProducts.length);
+        const currentPageProducts = shopifyProducts.slice(startIndex, endIndex);
+        
+        var shopifyHtml = '';
+        currentPageProducts.forEach(function(product) {
+          var index = products.indexOf(product);
+          shopifyHtml += createProductCard(product, index, 'shopify');
+        });
+        shopifyGrid.innerHTML = shopifyHtml;
+        
+        // Update pagination
+        totalShopifyProducts = shopifyProducts.length;
+        totalPages = Math.ceil(totalShopifyProducts / itemsPerPage);
+        updatePagination();
+      }
+
+      // Update buttons
+      document.getElementById('uploadAllBtn').disabled = extractedProducts.length === 0;
+
+      saveProductsToStorage();
+    }
+
+    // =============================================
+    // UPDATE PAGINATION CONTROLS
+    // =============================================
+    function updatePagination() {
+      const container = document.getElementById('paginationContainer');
+      if (totalPages <= 1) {
+        container.style.display = 'none';
+        return;
+      }
+      container.style.display = 'flex';
+      
+      // Update info
+      const start = (currentPage - 1) * itemsPerPage + 1;
+      const end = Math.min(currentPage * itemsPerPage, totalShopifyProducts);
+      document.getElementById('startCount').textContent = start;
+      document.getElementById('endCount').textContent = end;
+      document.getElementById('totalCount').textContent = totalShopifyProducts;
+      
+      // Update buttons
+      document.getElementById('prevPageBtn').disabled = currentPage <= 1;
+      document.getElementById('nextPageBtn').disabled = currentPage >= totalPages;
+      
+      // Generate page numbers
+      const pageNumbers = document.getElementById('pageNumbers');
+      pageNumbers.innerHTML = '';
+      
+      const maxVisiblePages = 7;
+      let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+      let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+      
+      if (endPage - startPage < maxVisiblePages - 1) {
+        startPage = Math.max(1, endPage - maxVisiblePages + 1);
+      }
+      
+      if (startPage > 1) {
+        const firstBtn = createPageButton(1);
+        pageNumbers.appendChild(firstBtn);
+        if (startPage > 2) {
+          const ellipsis = document.createElement('span');
+          ellipsis.className = 'ellipsis';
+          ellipsis.textContent = '…';
+          pageNumbers.appendChild(ellipsis);
+        }
+      }
+      
+      for (let i = startPage; i <= endPage; i++) {
+        const btn = createPageButton(i);
+        if (i === currentPage) btn.classList.add('active');
+        pageNumbers.appendChild(btn);
+      }
+      
+      if (endPage < totalPages) {
+        if (endPage < totalPages - 1) {
+          const ellipsis = document.createElement('span');
+          ellipsis.className = 'ellipsis';
+          ellipsis.textContent = '…';
+          pageNumbers.appendChild(ellipsis);
+        }
+        const lastBtn = createPageButton(totalPages);
+        pageNumbers.appendChild(lastBtn);
+      }
+    }
+
+    function createPageButton(page) {
+      const btn = document.createElement('button');
+      btn.className = 'page-num';
+      btn.textContent = page;
+      btn.onclick = function() {
+        goToPage(page);
+      };
+      return btn;
+    }
+
+    // =============================================
+    // PAGE NAVIGATION
+    // =============================================
+    function changePage(direction) {
+      if (direction === 'prev' && currentPage > 1) {
+        goToPage(currentPage - 1);
+      } else if (direction === 'next' && currentPage < totalPages) {
+        goToPage(currentPage + 1);
+      }
+    }
+
+    function goToPage(page) {
+      if (page < 1 || page > totalPages) return;
+      currentPage = page;
+      renderProducts();
+      // Scroll to the products section
+      document.getElementById('shopifySection').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // =============================================
+    // CREATE PRODUCT CARD - NO CSV, NO SYNC
+    // =============================================
+    function createProductCard(product, index, section) {
+      var variantLabel = product.variantLabel || 'Taille';
+      var variants = product.variants || product.sizes || [];
+      var images = product.images || [];
+
+      // Filter variants with valid quantities
+      var validVariants = variants.filter(function(v) {
+        return v.quantity !== undefined && !isNaN(v.quantity) && v.quantity >= 0;
+      });
+
+      var variantsHtml = '';
+      validVariants.slice(0, 6).forEach(function(v) {
+        var value = v.value || v.size || '';
+        var quantity = v.quantity || 0;
+        variantsHtml += '<span class="variant-tag"><strong>' + value + '</strong>: <span class="qty">' + quantity + '</span></span>';
+      });
+      if (validVariants.length > 6) {
+        variantsHtml += '<span class="variant-tag">+' + (validVariants.length - 6) + ' supplémentaire</span>';
+      }
+
+      var imagesHtml = '';
+      images.slice(0, 4).forEach(function(img) {
+        imagesHtml += '<img src="' + img + '" onclick="event.stopPropagation();openLightbox(products[' + index + '].images, 0)" onerror="this.style.display=\'none\'">';
+      });
+      if (images.length > 4) {
+        imagesHtml += '<span style="font-size:11px;color:#999;display:flex;align-items:center;">+' + (images.length - 4) + '</span>';
+      }
+
+      var price = product.price || 0;
+      
+      // Calculate total stock from valid variants
+      var totalStock = validVariants.reduce(function(sum, v) { return sum + (v.quantity || 0); }, 0);
+      
+      var statusBadge = '';
+      if (section === 'shopify') {
+        statusBadge = '<span class="badge-status badge-uploaded">✅ Dans Shopify</span>';
+      } else {
+        statusBadge = '<span class="badge-status badge-ready">📦 Prêt</span>';
+      }
+      
+      var uploadDisabled = (section === 'shopify') ? 'disabled' : '';
+      var uploadText = (section === 'shopify') ? '✅ Fait' : '📤 Importer';
+
+      return `
+        <div class="product-card ${section}">
+          <div class="product-title">${product.title}</div>
+          <div class="product-ref">📋 ${product.reference || 'N/A'}</div>
+          <div class="product-prices">
+            <span class="price">${price} DA</span>
+          </div>
+          <div class="product-stock">📦 Stock: <strong>${totalStock}</strong> pièces</div>
+          <div style="font-size:13px;color:#888;">📸 ${images.length} photos · 📏 ${validVariants.length} ${variantLabel}s</div>
+          ${variantsHtml ? '<div class="product-variants">' + variantsHtml + '</div>' : ''}
+          ${imagesHtml ? '<div class="product-images-preview">' + imagesHtml + '</div>' : ''}
+          <div class="product-actions">
+            <button class="btn-sm btn-sm-upload" onclick="uploadSingle(${index})" id="uploadBtn_${index}" ${uploadDisabled}>${uploadText}</button>
+            <span style="margin-left:auto;">${statusBadge}</span>
+          </div>
+        </div>
+      `;
+    }
+
+    // =============================================
+    // LOAD SHOPIFY PRODUCTS - FIXED
+    // =============================================
+    async function loadShopifyProducts() {
+      var btn = document.getElementById('getProductsBtn');
+      if (!btn) {
+        await showPopup('Erreur', '❌ Bouton non trouvé', '❌', 'error');
+        return;
+      }
+      
+      btn.disabled = true;
+      btn.textContent = '⏳ Chargement...';
+      showProgress(true, 'Récupération des produits depuis Shopify...');
+
+      await showPopup('Chargement des produits', '🔄 Chargement des produits depuis Shopify...', '🔄', 'info');
+
+      try {
+        // Fetch products from the paginated endpoint
+        var response = await fetch('/api/shopify-products');
+        var data = await response.json();
+
+        if (data.success && data.products.length > 0) {
+          // Add products to the local array
+          var existingIdentifiers = new Set();
+          products.forEach(function(p) {
+            if (p.reference) existingIdentifiers.add(p.reference);
+            if (p.shopifyId) existingIdentifiers.add('shopify_' + p.shopifyId);
+          });
+          
+          var newProducts = [];
+          var duplicateCount = 0;
+          
+          data.products.forEach(function(p) {
+            var sku = null;
+            if (p.variants && p.variants.length > 0) {
+              sku = p.variants[0].sku;
+            }
+            
+            var isDuplicate = false;
+            if (sku && existingIdentifiers.has(sku)) {
+              isDuplicate = true;
+            }
+            if (p.id && existingIdentifiers.has('shopify_' + p.id)) {
+              isDuplicate = true;
+            }
+            
+            if (isDuplicate) {
+              duplicateCount++;
+              return;
+            }
+            
+            var totalStock = 0;
+            var variants = [];
+            
+            if (p.variants && p.variants.length > 0) {
+              variants = p.variants.map(function(v) {
+                var qty = v.inventory_quantity || 0;
+                totalStock += qty;
+                return {
+                  value: v.option1 || 'Default',
+                  quantity: qty
+                };
+              });
+            }
+            
+            newProducts.push({
+              kimlandId: String(p.id),
+              shopifyId: String(p.id),
+              title: p.title,
+              reference: sku || 'N/A',
+              price: parseFloat(p.variants[0]?.price) || 0,
+              images: p.images.map(function(img) { return img.src; }),
+              variants: variants,
+              sizes: variants,
+              totalStock: totalStock,
+              uploaded: true,
+              _isNew: false,
+              createdAt: p.created_at || new Date().toISOString()
+            });
+          });
+
+          if (newProducts.length > 0) {
+            newProducts.forEach(function(p) {
+              products.push(p);
+              if (p.reference) {
+                if (!shopifySkuCache) shopifySkuCache = { skus: new Set(), titles: new Set() };
+                shopifySkuCache.skus.add(p.reference);
+              }
+            });
+            
+            // Reset pagination to first page
+            currentPage = 1;
+            renderProducts();
+            
+            await showPopup('Produits chargés', '✅ Ajouté <strong>' + newProducts.length + '</strong> nouveaux produits depuis Shopify<br>⏭️ Ignoré <strong>' + duplicateCount + '</strong> doublons<br>📦 Total: <strong>' + products.length + '</strong> produits', '✅', 'success');
+          } else {
+            await showPopup('Aucun nouveau produit', 'ℹ️ Aucun nouveau produit trouvé (tous les ' + products.length + ' sont déjà chargés)', 'ℹ️', 'info');
+          }
+        } else {
+          await showPopup('Aucun produit', 'ℹ️ Aucun produit trouvé dans Shopify', 'ℹ️', 'info');
+        }
+      } catch (error) {
+        console.error('Erreur:', error);
+        await showPopup('Erreur', '❌ Erreur lors de la récupération des produits: ' + error.message, '❌', 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '📦 Récupérer les produits';
+        showProgress(false);
+      }
+    }
+
+    // =============================================
+    // EXTRACT PRODUCTS - UP TO 10
+    // =============================================
+    async function extractProducts() {
+      var urlsText = document.getElementById('bulkUrls').value.trim();
+      if (!urlsText) {
+        await showPopup('Erreur', '❌ Veuillez entrer au moins une URL de produit', '❌', 'error');
+        return;
+      }
+
+      var urls = urlsText.split('\n')
+        .map(function(url) { return url.trim(); })
+        .filter(function(url) { return url.length > 0; });
+
+      if (urls.length === 0) {
+        await showPopup('Erreur', '❌ Veuillez entrer des URLs valides', '❌', 'error');
+        return;
+      }
+
+      if (urls.length > 10) {
+        await showPopup('Erreur', '❌ Maximum 10 produits autorisés. Vous avez entré ' + urls.length, '❌', 'error');
+        return;
+      }
+
+      var extractBtn = document.getElementById('extractBtn');
+      extractBtn.disabled = true;
+      extractBtn.textContent = '⏳ Extraction...';
+      showProgress(true, 'Extraction de ' + urls.length + ' produits...');
+
+      await showPopup('Extraction des produits', '🔄 Extraction de ' + urls.length + ' produits depuis Kimland...', '🔄', 'info');
+      showPopupProgress(0, urls.length, 'Début de l\'extraction...');
+
+      shopifySkuCache = null;
+      var shopifyCache = await fetchShopifySkus();
+
+      var extracted = [];
+      var alreadyExists = [];
+
+      for (var i = 0; i < urls.length; i++) {
+        showPopupProgress(i + 1, urls.length, 'Extraction du produit ' + (i + 1) + '/' + urls.length);
+        updateProgress(i + 1, urls.length);
+        try {
+          var response = await fetch('/api/extract', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: urls[i] })
+          });
+
+          var data = await response.json();
+
+          if (data.success) {
+            var product = data.product;
+            
+            if (product.variants) {
+              product.variants = product.variants.filter(function(v) {
+                return v.quantity !== undefined && !isNaN(v.quantity) && v.quantity >= 0;
+              });
+              product.totalStock = product.variants.reduce(function(sum, v) { return sum + v.quantity; }, 0);
+            }
+            
+            var existsInShopify = await checkProductExists(product.reference, product.title);
+            
+            product.uploaded = false;
+            product.shopifyId = null;
+            product._isNew = !existsInShopify;
+            
+            var existingIndex = products.findIndex(function(p) {
+              return p.reference === product.reference || p.kimlandId === product.kimlandId;
+            });
+            
+            if (existingIndex !== -1) {
+              if (products[existingIndex].shopifyId) {
+                product.shopifyId = products[existingIndex].shopifyId;
+                product.uploaded = true;
+              }
+              products[existingIndex] = product;
+            } else {
+              products.push(product);
+            }
+            
+            if (existsInShopify) {
+              alreadyExists.push(product.title);
+              if (!product.shopifyId) {
+                try {
+                  var shopifyCheck = await fetch('/api/shopify-product?sku=' + encodeURIComponent(product.reference));
+                  var shopifyData = await shopifyCheck.json();
+                  if (shopifyData.success && shopifyData.product) {
+                    product.shopifyId = String(shopifyData.product.id);
+                    product.uploaded = true;
+                  }
+                } catch (e) {
+                  console.error('Échec de la récupération de l\'ID Shopify:', e);
+                }
+              }
+            } else {
+              extracted.push(product.title);
+            }
+          }
+        } catch (error) {
+          console.error('Erreur:', error);
+        }
+      }
+
+      hidePopupProgress();
+      renderProducts();
+      showProgress(false);
+      extractBtn.disabled = false;
+      extractBtn.textContent = '🔍 Extraire les produits';
+
+      var message = '✅ <strong>' + products.length + '</strong> produits extraits';
+      if (extracted.length > 0) {
+        message += '<br>📦 Nouveaux: <strong>' + extracted.length + '</strong> produits';
+      }
+      if (alreadyExists.length > 0) {
+        message += '<br>✅ Déjà dans Shopify: <strong>' + alreadyExists.length + '</strong> produits';
+      }
+
+      await showPopup('Extraction terminée', message, '✅', 'success');
+    }
+
+    // =============================================
+    // UPLOAD SINGLE
+    // =============================================
+    async function uploadSingle(index) {
+      var product = products[index];
+      if (!product) return;
+
+      var btn = document.getElementById('uploadBtn_' + index);
+      if (!btn) {
+        var buttons = document.querySelectorAll('.btn-sm-upload');
+        for (var b of buttons) {
+          if (b.getAttribute('onclick') && b.getAttribute('onclick').includes('' + index)) {
+            btn = b;
+            break;
+          }
+        }
+        if (!btn) {
+          await showPopup('Erreur', '❌ Impossible de trouver le bouton d\'importation', '❌', 'error');
+          return;
+        }
+      }
+      
+      if (product.shopifyId) {
+        await showPopup('Déjà importé', 'ℹ️ ' + product.title + ' est déjà importé !', 'ℹ️', 'warning');
+        return;
+      }
+      
+      btn.disabled = true;
+      btn.textContent = '⏳';
+      await showPopup('Importation', '🔄 Importation: ' + product.title + '...', '🔄', 'info');
+
+      try {
+        shopifySkuCache = null;
+        var exists = await checkProductExists(product.reference, product.title);
+        
+        if (exists) {
+          try {
+            var shopifyCheck = await fetch('/api/shopify-product?sku=' + encodeURIComponent(product.reference));
+            var shopifyData = await shopifyCheck.json();
+            if (shopifyData.success && shopifyData.product) {
+              product.shopifyId = String(shopifyData.product.id);
+              product.uploaded = true;
+              product._isNew = false;
+              await showPopup('Déjà existant', 'ℹ️ ' + product.title + ' existe déjà dans Shopify ! ✅', 'ℹ️', 'warning');
+              renderProducts();
+              return;
+            }
+          } catch (e) {
+            console.error('Échec de la récupération de l\'ID Shopify:', e);
+          }
+        }
+
+        var response = await fetch('/api/upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ product: product })
+        });
+
+        var data = await response.json();
+
+        if (data.success) {
+          product.shopifyId = data.product.id;
+          product.uploaded = true;
+          product._isNew = false;
+          if (product.reference && shopifySkuCache) {
+            shopifySkuCache.skus.add(product.reference);
+          }
+          await showPopup('Importé !', '✅ ' + product.title + ' créé dans Shopify !', '✅', 'success');
+          renderProducts();
+        } else {
+          product.shopifyId = null;
+          product.uploaded = false;
+          await showPopup('Échec de l\'importation', '❌ Échec de l\'importation: ' + product.title, '❌', 'error');
+          renderProducts();
+        }
+      } catch (error) {
+        product.shopifyId = null;
+        product.uploaded = false;
+        await showPopup('Erreur', '❌ Erreur: ' + error.message, '❌', 'error');
+        renderProducts();
+      }
+    }
+
+    // =============================================
+    // UPLOAD ALL
+    // =============================================
+    async function uploadAll() {
+      var extractedProducts = products.filter(function(p) { return !p.shopifyId; });
+      
+      if (extractedProducts.length === 0) {
+        await showPopup('Tout importé', 'ℹ️ Tous les produits sont déjà importés !', 'ℹ️', 'info');
+        return;
+      }
+
+      var btn = document.getElementById('uploadAllBtn');
+      if (!btn) return;
+      
+      btn.disabled = true;
+      btn.textContent = '⏳ Importation...';
+      showProgress(true, 'Importation de ' + extractedProducts.length + ' produits...');
+
+      await showPopup('Importation des produits', '🔄 Importation de ' + extractedProducts.length + ' produits vers Shopify...', '🔄', 'info');
+      showPopupProgress(0, extractedProducts.length, 'Début de l\'importation...');
+
+      shopifySkuCache = null;
+      await fetchShopifySkus();
+
+      var successCount = 0;
+      var skippedCount = 0;
+      var failedProducts = [];
+      
+      for (var i = 0; i < extractedProducts.length; i++) {
+        var product = extractedProducts[i];
+        
+        showPopupProgress(i + 1, extractedProducts.length, 'Importation ' + (i + 1) + '/' + extractedProducts.length);
+        updateProgress(i + 1, extractedProducts.length);
+        try {
+          var exists = await checkProductExists(product.reference, product.title);
+          
+          if (exists) {
+            try {
+              var shopifyCheck = await fetch('/api/shopify-product?sku=' + encodeURIComponent(product.reference));
+              var shopifyData = await shopifyCheck.json();
+              if (shopifyData.success && shopifyData.product) {
+                product.shopifyId = String(shopifyData.product.id);
+                product.uploaded = true;
+                product._isNew = false;
+                skippedCount++;
+                continue;
+              }
+            } catch (e) {
+              console.error('Échec de la récupération de l\'ID Shopify:', e);
+            }
+          }
+          
+          var response = await fetch('/api/upload', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ product: product })
+          });
+
+          var data = await response.json();
+          if (data.success) {
+            product.shopifyId = data.product.id;
+            product.uploaded = true;
+            product._isNew = false;
+            if (product.reference && shopifySkuCache) {
+              shopifySkuCache.skus.add(product.reference);
+            }
+            successCount++;
+          } else {
+            product.shopifyId = null;
+            product.uploaded = false;
+            failedProducts.push(product.title);
+          }
+        } catch (error) {
+          product.shopifyId = null;
+          product.uploaded = false;
+          failedProducts.push(product.title);
+        }
+        await delay(1000);
+        renderProducts();
+      }
+
+      hidePopupProgress();
+      showProgress(false);
+      btn.disabled = false;
+      btn.textContent = '📤 Tout importer';
+      renderProducts();
+      
+      var message = '✅ Importé <strong>' + successCount + '</strong>/' + extractedProducts.length + ' produits';
+      if (skippedCount > 0) {
+        message += '<br>⚠️ Ignoré: <strong>' + skippedCount + '</strong> (déjà existants)';
+      }
+      if (failedProducts.length > 0) {
+        message += '<br>❌ Échec: <strong>' + failedProducts.length + '</strong>';
+      }
+      
+      await showPopup('Importation terminée', message, successCount > 0 ? '✅' : '❌', successCount > 0 ? 'success' : 'error');
+    }
+
+    // =============================================
+    // REFRESH STATUS
+    // =============================================
+    async function refreshStatus() {
+      await showPopup('Rafraîchissement', '🔄 Rafraîchissement du statut des produits...', '🔄', 'info');
+      
+      shopifySkuCache = null;
+      var shopifyCache = await fetchShopifySkus();
+      
+      var updatedCount = 0;
+      for (var i = 0; i < products.length; i++) {
+        var product = products[i];
+        if (!product.shopifyId) {
+          if (product.reference && shopifyCache.skus.has(product.reference)) {
+            try {
+              var shopifyCheck = await fetch('/api/shopify-product?sku=' + encodeURIComponent(product.reference));
+              var shopifyData = await shopifyCheck.json();
+              if (shopifyData.success && shopifyData.product) {
+                product.shopifyId = String(shopifyData.product.id);
+                product.uploaded = true;
+                product._isNew = false;
+                updatedCount++;
+              }
+            } catch (e) {
+              console.error('Échec de la récupération de l\'ID Shopify:', e);
+            }
+          }
+        }
+      }
+      
+      renderProducts();
+      await showPopup('Statut rafraîchi', '✅ <strong>' + updatedCount + '</strong> produits déjà dans Shopify trouvés', '✅', 'success');
+    }
+
+    // =============================================
+    // AUTO-LOAD PRODUCTS ON PAGE LOAD
+    // =============================================
+    async function autoLoadProducts() {
+      if (loadProductsFromStorage() && products.length > 0) {
+        renderProducts();
+      }
+      
+      try {
+        shopifySkuCache = null;
+        var shopifyCache = await fetchShopifySkus();
+        
+        for (var i = 0; i < products.length; i++) {
+          var product = products[i];
+          if (!product.shopifyId && product.reference && shopifyCache.skus.has(product.reference)) {
+            try {
+              var shopifyCheck = await fetch('/api/shopify-product?sku=' + encodeURIComponent(product.reference));
+              var shopifyData = await shopifyCheck.json();
+              if (shopifyData.success && shopifyData.product) {
+                product.shopifyId = String(shopifyData.product.id);
+                product.uploaded = true;
+              }
+            } catch (e) {
+              console.error('Échec de la récupération de l\'ID Shopify:', e);
+            }
+          }
+        }
+        
+        renderProducts();
+      } catch (error) {
+        // Silent fail
+      }
+    }
+
+    // =============================================
+    // CLEAR ALL
+    // =============================================
+    async function clearAll() {
+      if (products.length === 0) {
+        await showPopup('Info', 'ℹ️ Aucun produit à effacer', 'ℹ️', 'info');
+        return;
+      }
+      if (confirm('Êtes-vous sûr de vouloir effacer tous les produits ?')) {
+        products = [];
+        renderProducts();
+        document.getElementById('bulkUrls').value = '';
+        document.getElementById('urlCount').textContent = '0';
+        localStorage.removeItem('kimland_products');
+        shopifySkuCache = null;
+        await showPopup('Effacé', '🗑️ Tous les produits ont été effacés', '🗑️', 'info');
+      }
+    }
+
+    // =============================================
+    // AUTO-LOAD ON PAGE LOAD
+    // =============================================
+    window.onload = function() {
+      autoLoadProducts();
+    };
+  </script>
+
+</body>
+</html>
