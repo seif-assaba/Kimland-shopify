@@ -8831,3 +8831,289 @@
 {"level":"warn","message":"⚠️ Aucune publication trouvée. Vérifiez vos canaux de vente.","timestamp":"2026-07-02T23:21:47.087Z"}
 {"level":"info","message":"💾 Saved 1 mappings","timestamp":"2026-07-02T23:21:47.089Z"}
 {"level":"info","message":"✅ Mapped Kimland 7436 → Shopify 8635995390148","timestamp":"2026-07-02T23:21:47.089Z"}
+{"level":"warn","message":"⚠️ Version API 2026-07 instable. Utilisation de 2024-01.","timestamp":"2026-07-03T00:19:46.435Z"}
+{"level":"info","message":"🔧 Shopify config: Store=signateurconfort.myshopify.com, API=2024-01","timestamp":"2026-07-03T00:19:46.455Z"}
+{"level":"info","message":"📄 Récupération de la page 1 des produits Shopify...","timestamp":"2026-07-03T00:19:46.475Z"}
+{"level":"warn","message":"⚠️ status=any ne fonctionne pas, on réessaie sans...","timestamp":"2026-07-03T00:19:47.126Z"}
+{"level":"info","message":"✅ Page 1 (sans status=any): 250 produits récupérés (total: 250)","timestamp":"2026-07-03T00:19:47.834Z"}
+{"level":"info","message":"✅ Page 2: 170 produits récupérés (total: 420)","timestamp":"2026-07-03T00:19:48.518Z"}
+{"level":"info","message":"📦 420 produits récupérés depuis Shopify (2 pages)","timestamp":"2026-07-03T00:19:48.731Z"}
+{"level":"warn","message":"⚠️ Version API 2026-07 instable. Utilisation de 2024-01.","timestamp":"2026-07-03T00:19:55.165Z"}
+{"level":"info","message":"🔧 Shopify config: Store=signateurconfort.myshopify.com, API=2024-01","timestamp":"2026-07-03T00:19:55.166Z"}
+{"level":"info","message":"📄 Récupération de la page 1 des produits Shopify...","timestamp":"2026-07-03T00:19:55.167Z"}
+{"level":"warn","message":"⚠️ status=any ne fonctionne pas, on réessaie sans...","timestamp":"2026-07-03T00:19:55.477Z"}
+{"level":"info","message":"✅ Page 1 (sans status=any): 250 produits récupérés (total: 250)","timestamp":"2026-07-03T00:19:56.150Z"}
+{"level":"info","message":"✅ Page 2: 170 produits récupérés (total: 420)","timestamp":"2026-07-03T00:19:56.814Z"}
+{"level":"info","message":"📦 420 produits récupérés depuis Shopify (2 pages)","timestamp":"2026-07-03T00:19:57.018Z"}
+{"level":"warn","message":"⚠️ Version API 2026-07 instable. Utilisation de 2024-01.","timestamp":"2026-07-03T00:20:06.787Z"}
+{"level":"info","message":"🔧 Shopify config: Store=signateurconfort.myshopify.com, API=2024-01","timestamp":"2026-07-03T00:20:06.787Z"}
+{"level":"info","message":"📄 Récupération de la page 1 des produits Shopify...","timestamp":"2026-07-03T00:20:06.788Z"}
+{"level":"warn","message":"⚠️ status=any ne fonctionne pas, on réessaie sans...","timestamp":"2026-07-03T00:20:07.142Z"}
+{"level":"info","message":"✅ Page 1 (sans status=any): 250 produits récupérés (total: 250)","timestamp":"2026-07-03T00:20:08.053Z"}
+{"level":"info","message":"✅ Page 2: 170 produits récupérés (total: 420)","timestamp":"2026-07-03T00:20:08.631Z"}
+{"level":"info","message":"📦 420 produits récupérés depuis Shopify (2 pages)","timestamp":"2026-07-03T00:20:08.836Z"}
+{"level":"info","message":"Navigateur initialisé","timestamp":"2026-07-03T00:20:09.481Z"}
+{"level":"info","message":"Connexion à Kimland...","timestamp":"2026-07-03T00:20:09.483Z"}
+{"level":"info","message":"✅ Email rempli","timestamp":"2026-07-03T00:20:15.174Z"}
+{"level":"info","message":"✅ Nom d'utilisateur rempli","timestamp":"2026-07-03T00:20:15.228Z"}
+{"level":"info","message":"✅ Mot de passe rempli","timestamp":"2026-07-03T00:20:15.280Z"}
+{"level":"info","message":"URL actuelle après connexion: https://kimland.dz/app/client/index.php","timestamp":"2026-07-03T00:20:16.552Z"}
+{"level":"info","message":"✅ Connexion réussie !","timestamp":"2026-07-03T00:20:16.552Z"}
+{"level":"info","message":"📋 Extraction depuis: https://kimland.dz/product/7436/rider-street-slide-ad-bluebluegreen/","timestamp":"2026-07-03T00:20:16.554Z"}
+{"level":"info","message":"✅ Sélecteur de taille trouvé","timestamp":"2026-07-03T00:20:22.092Z"}
+{"level":"info","message":"✅ Extrait: RIDER STREET SLIDE AD BLUE/BLUE/GREEN","timestamp":"2026-07-03T00:20:22.133Z"}
+{"level":"info","message":"   📋 Référence: 11578AR408","timestamp":"2026-07-03T00:20:22.134Z"}
+{"level":"info","message":"   💰 Prix de vente: 3900 DA","timestamp":"2026-07-03T00:20:22.135Z"}
+{"level":"info","message":"   📸 Images: 5","timestamp":"2026-07-03T00:20:22.136Z"}
+{"level":"info","message":"   📏 Type de variante: Pointure (pointure)","timestamp":"2026-07-03T00:20:22.136Z"}
+{"level":"info","message":"   📏 Variantes: 3","timestamp":"2026-07-03T00:20:22.137Z"}
+{"level":"info","message":"   📦 Stock total: 14","timestamp":"2026-07-03T00:20:22.137Z"}
+{"level":"info","message":"   📏 Variantes:","timestamp":"2026-07-03T00:20:22.138Z"}
+{"level":"info","message":"      43: 11 pièces","timestamp":"2026-07-03T00:20:22.139Z"}
+{"level":"info","message":"      44: 2 pièces","timestamp":"2026-07-03T00:20:22.139Z"}
+{"level":"info","message":"      45: 1 pièces","timestamp":"2026-07-03T00:20:22.140Z"}
+{"level":"info","message":"Navigateur fermé","timestamp":"2026-07-03T00:20:22.361Z"}
+{"level":"warn","message":"⚠️ Version API 2026-07 instable. Utilisation de 2024-01.","timestamp":"2026-07-03T00:20:41.856Z"}
+{"level":"info","message":"🔧 Shopify config: Store=signateurconfort.myshopify.com, API=2024-01","timestamp":"2026-07-03T00:20:41.857Z"}
+{"level":"info","message":"📄 Récupération de la page 1 des produits Shopify...","timestamp":"2026-07-03T00:20:41.858Z"}
+{"level":"warn","message":"⚠️ status=any ne fonctionne pas, on réessaie sans...","timestamp":"2026-07-03T00:20:42.141Z"}
+{"level":"info","message":"✅ Page 1 (sans status=any): 250 produits récupérés (total: 250)","timestamp":"2026-07-03T00:20:42.855Z"}
+{"level":"info","message":"✅ Page 2: 170 produits récupérés (total: 420)","timestamp":"2026-07-03T00:20:43.524Z"}
+{"level":"info","message":"📦 420 produits récupérés depuis Shopify (2 pages)","timestamp":"2026-07-03T00:20:43.739Z"}
+{"level":"warn","message":"⚠️ Version API 2026-07 instable. Utilisation de 2024-01.","timestamp":"2026-07-03T00:20:43.834Z"}
+{"level":"info","message":"🔧 Shopify config: Store=signateurconfort.myshopify.com, API=2024-01","timestamp":"2026-07-03T00:20:43.835Z"}
+{"level":"info","message":"📂 Loaded 1 mappings","timestamp":"2026-07-03T00:20:43.850Z"}
+{"level":"info","message":"📄 Récupération de la page 1 des produits Shopify...","timestamp":"2026-07-03T00:20:43.852Z"}
+{"level":"warn","message":"⚠️ status=any ne fonctionne pas, on réessaie sans...","timestamp":"2026-07-03T00:20:44.120Z"}
+{"level":"info","message":"✅ Page 1 (sans status=any): 250 produits récupérés (total: 250)","timestamp":"2026-07-03T00:20:44.850Z"}
+{"level":"info","message":"✅ Page 2: 170 produits récupérés (total: 420)","timestamp":"2026-07-03T00:20:45.509Z"}
+{"level":"info","message":"📦 420 produits récupérés depuis Shopify (2 pages)","timestamp":"2026-07-03T00:20:45.720Z"}
+{"data":{"errors":"Not Found"},"level":"error","message":"❌ Erreur API Shopify (getProduct):","status":404,"statusText":"Not Found","timestamp":"2026-07-03T00:20:46.071Z"}
+{"level":"info","message":"🛍️ Création du produit dans Shopify: RIDER STREET SLIDE AD BLUE/BLUE/GREEN","timestamp":"2026-07-03T00:20:46.074Z"}
+{"level":"info","message":"✅ Produit créé: RIDER STREET SLIDE AD BLUE/BLUE/GREEN - 11578AR408 (ID: 8636016623812)","timestamp":"2026-07-03T00:20:52.811Z"}
+{"level":"info","message":"   🏷️  Fournisseur: Signateur Confort","timestamp":"2026-07-03T00:20:52.812Z"}
+{"level":"info","message":"   📢 Publié sur tous les canaux (global)","timestamp":"2026-07-03T00:20:52.813Z"}
+{"level":"info","message":"📢 Publication du produit sur tous les canaux de vente...","timestamp":"2026-07-03T00:20:52.814Z"}
+{"level":"info","message":"📡 0 publications trouvées","timestamp":"2026-07-03T00:20:53.074Z"}
+{"level":"warn","message":"⚠️ Aucune publication trouvée. Vérifiez vos canaux de vente.","timestamp":"2026-07-03T00:20:53.074Z"}
+{"level":"info","message":"💾 Saved 1 mappings","timestamp":"2026-07-03T00:20:53.091Z"}
+{"level":"info","message":"✅ Mapped Kimland 7436 → Shopify 8636016623812","timestamp":"2026-07-03T00:20:53.092Z"}
+{"level":"warn","message":"⚠️ Version API 2026-07 instable. Utilisation de 2024-01.","timestamp":"2026-07-03T00:28:01.289Z"}
+{"level":"info","message":"🔧 Shopify config: Store=signateurconfort.myshopify.com, API=2024-01","timestamp":"2026-07-03T00:28:01.295Z"}
+{"level":"info","message":"📄 Récupération de la page 1 des produits Shopify...","timestamp":"2026-07-03T00:28:01.298Z"}
+{"level":"warn","message":"⚠️ status=any ne fonctionne pas, on réessaie sans...","timestamp":"2026-07-03T00:28:01.790Z"}
+{"level":"info","message":"✅ Page 1 (sans status=any): 250 produits récupérés (total: 250)","timestamp":"2026-07-03T00:28:02.501Z"}
+{"level":"info","message":"✅ Page 2: 170 produits récupérés (total: 420)","timestamp":"2026-07-03T00:28:03.150Z"}
+{"level":"info","message":"📦 420 produits récupérés depuis Shopify (2 pages)","timestamp":"2026-07-03T00:28:03.364Z"}
+{"level":"warn","message":"⚠️ Version API 2026-07 instable. Utilisation de 2024-01.","timestamp":"2026-07-03T00:28:05.980Z"}
+{"level":"info","message":"🔧 Shopify config: Store=signateurconfort.myshopify.com, API=2024-01","timestamp":"2026-07-03T00:28:05.982Z"}
+{"level":"info","message":"📄 Récupération de la page 1 des produits Shopify...","timestamp":"2026-07-03T00:28:05.983Z"}
+{"level":"warn","message":"⚠️ status=any ne fonctionne pas, on réessaie sans...","timestamp":"2026-07-03T00:28:06.238Z"}
+{"level":"info","message":"✅ Page 1 (sans status=any): 250 produits récupérés (total: 250)","timestamp":"2026-07-03T00:28:06.985Z"}
+{"level":"info","message":"✅ Page 2: 170 produits récupérés (total: 420)","timestamp":"2026-07-03T00:28:07.692Z"}
+{"level":"info","message":"📦 420 produits récupérés depuis Shopify (2 pages)","timestamp":"2026-07-03T00:28:07.902Z"}
+{"level":"info","message":"Navigateur initialisé","timestamp":"2026-07-03T00:28:08.398Z"}
+{"level":"info","message":"Connexion à Kimland...","timestamp":"2026-07-03T00:28:08.399Z"}
+{"level":"info","message":"✅ Email rempli","timestamp":"2026-07-03T00:28:10.913Z"}
+{"level":"info","message":"✅ Nom d'utilisateur rempli","timestamp":"2026-07-03T00:28:10.941Z"}
+{"level":"info","message":"✅ Mot de passe rempli","timestamp":"2026-07-03T00:28:10.970Z"}
+{"level":"info","message":"URL actuelle après connexion: https://kimland.dz/app/client/index.php","timestamp":"2026-07-03T00:28:11.952Z"}
+{"level":"info","message":"✅ Connexion réussie !","timestamp":"2026-07-03T00:28:11.953Z"}
+{"level":"info","message":"📋 Extraction depuis: https://kimland.dz/product/6918/reebok-rbk-fulgere-slide/","timestamp":"2026-07-03T00:28:11.953Z"}
+{"level":"info","message":"✅ Sélecteur de taille trouvé","timestamp":"2026-07-03T00:28:16.501Z"}
+{"level":"info","message":"✅ Extrait: REEBOK RBK FULGERE SLIDE","timestamp":"2026-07-03T00:28:16.519Z"}
+{"level":"info","message":"   📋 Référence: 100038917","timestamp":"2026-07-03T00:28:16.520Z"}
+{"level":"info","message":"   💰 Prix de vente: 5500 DA","timestamp":"2026-07-03T00:28:16.520Z"}
+{"level":"info","message":"   📸 Images: 12","timestamp":"2026-07-03T00:28:16.520Z"}
+{"level":"info","message":"   📏 Type de variante: Pointure (pointure)","timestamp":"2026-07-03T00:28:16.520Z"}
+{"level":"info","message":"   📏 Variantes: 6","timestamp":"2026-07-03T00:28:16.520Z"}
+{"level":"info","message":"   📦 Stock total: 73","timestamp":"2026-07-03T00:28:16.520Z"}
+{"level":"info","message":"   📏 Variantes:","timestamp":"2026-07-03T00:28:16.521Z"}
+{"level":"info","message":"      39: 3 pièces","timestamp":"2026-07-03T00:28:16.521Z"}
+{"level":"info","message":"      40.5: 10 pièces","timestamp":"2026-07-03T00:28:16.521Z"}
+{"level":"info","message":"      42: 17 pièces","timestamp":"2026-07-03T00:28:16.521Z"}
+{"level":"info","message":"      43: 17 pièces","timestamp":"2026-07-03T00:28:16.521Z"}
+{"level":"info","message":"      44.5: 21 pièces","timestamp":"2026-07-03T00:28:16.521Z"}
+{"level":"info","message":"      45.5: 5 pièces","timestamp":"2026-07-03T00:28:16.521Z"}
+{"level":"info","message":"Navigateur fermé","timestamp":"2026-07-03T00:28:16.667Z"}
+{"level":"warn","message":"⚠️ Version API 2026-07 instable. Utilisation de 2024-01.","timestamp":"2026-07-03T00:28:24.248Z"}
+{"level":"info","message":"🔧 Shopify config: Store=signateurconfort.myshopify.com, API=2024-01","timestamp":"2026-07-03T00:28:24.249Z"}
+{"level":"info","message":"📄 Récupération de la page 1 des produits Shopify...","timestamp":"2026-07-03T00:28:24.249Z"}
+{"level":"warn","message":"⚠️ status=any ne fonctionne pas, on réessaie sans...","timestamp":"2026-07-03T00:28:24.621Z"}
+{"level":"info","message":"✅ Page 1 (sans status=any): 250 produits récupérés (total: 250)","timestamp":"2026-07-03T00:28:25.354Z"}
+{"level":"info","message":"✅ Page 2: 170 produits récupérés (total: 420)","timestamp":"2026-07-03T00:28:26.006Z"}
+{"level":"info","message":"📦 420 produits récupérés depuis Shopify (2 pages)","timestamp":"2026-07-03T00:28:26.219Z"}
+{"level":"warn","message":"⚠️ Version API 2026-07 instable. Utilisation de 2024-01.","timestamp":"2026-07-03T00:28:26.336Z"}
+{"level":"info","message":"🔧 Shopify config: Store=signateurconfort.myshopify.com, API=2024-01","timestamp":"2026-07-03T00:28:26.337Z"}
+{"level":"info","message":"📂 Loaded 1 mappings","timestamp":"2026-07-03T00:28:26.339Z"}
+{"level":"info","message":"📄 Récupération de la page 1 des produits Shopify...","timestamp":"2026-07-03T00:28:26.340Z"}
+{"level":"warn","message":"⚠️ status=any ne fonctionne pas, on réessaie sans...","timestamp":"2026-07-03T00:28:26.580Z"}
+{"level":"info","message":"✅ Page 1 (sans status=any): 250 produits récupérés (total: 250)","timestamp":"2026-07-03T00:28:27.278Z"}
+{"level":"info","message":"✅ Page 2: 170 produits récupérés (total: 420)","timestamp":"2026-07-03T00:28:27.945Z"}
+{"level":"info","message":"📦 420 produits récupérés depuis Shopify (2 pages)","timestamp":"2026-07-03T00:28:28.156Z"}
+{"level":"info","message":"🛍️ Création du produit dans Shopify: REEBOK RBK FULGERE SLIDE","timestamp":"2026-07-03T00:28:28.160Z"}
+{"level":"info","message":"✅ Produit créé: REEBOK RBK FULGERE SLIDE - 100038917 (ID: 8636020064452)","timestamp":"2026-07-03T00:28:41.647Z"}
+{"level":"info","message":"   🏷️  Fournisseur: Signateur Confort","timestamp":"2026-07-03T00:28:41.648Z"}
+{"level":"info","message":"   📢 Publié sur tous les canaux (global)","timestamp":"2026-07-03T00:28:41.649Z"}
+{"level":"info","message":"📢 Publication du produit sur tous les canaux de vente...","timestamp":"2026-07-03T00:28:41.650Z"}
+{"level":"info","message":"📡 0 publications trouvées","timestamp":"2026-07-03T00:28:41.907Z"}
+{"level":"info","message":"📋 Publications:","timestamp":"2026-07-03T00:28:41.907Z"}
+{"level":"info","message":"[]","timestamp":"2026-07-03T00:28:41.908Z"}
+{"level":"warn","message":"⚠️ Aucune publication trouvée. Vérifiez vos canaux de vente.","timestamp":"2026-07-03T00:28:41.908Z"}
+{"level":"info","message":"💾 Saved 2 mappings","timestamp":"2026-07-03T00:28:41.910Z"}
+{"level":"info","message":"✅ Mapped Kimland 6918 → Shopify 8636020064452","timestamp":"2026-07-03T00:28:41.910Z"}
+{"level":"warn","message":"⚠️ Version API 2026-07 instable. Utilisation de 2024-01.","timestamp":"2026-07-03T00:40:43.458Z"}
+{"level":"info","message":"🔧 Shopify config: Store=signateurconfort.myshopify.com, API=2024-01","timestamp":"2026-07-03T00:40:43.459Z"}
+{"level":"info","message":"📄 Récupération de la page 1 des produits Shopify...","timestamp":"2026-07-03T00:40:43.460Z"}
+{"data":{"errors":"[API] Invalid API key or access token (unrecognized login or wrong password)"},"level":"error","message":"❌ Erreur API Shopify (getAllProducts):","status":401,"statusText":"Unauthorized","timestamp":"2026-07-03T00:40:43.747Z"}
+{"level":"warn","message":"⚠️ Version API 2026-07 instable. Utilisation de 2024-01.","timestamp":"2026-07-03T00:40:47.600Z"}
+{"level":"info","message":"🔧 Shopify config: Store=signateurconfort.myshopify.com, API=2024-01","timestamp":"2026-07-03T00:40:47.601Z"}
+{"level":"info","message":"📄 Récupération de la page 1 des produits Shopify...","timestamp":"2026-07-03T00:40:47.601Z"}
+{"data":{"errors":"[API] Invalid API key or access token (unrecognized login or wrong password)"},"level":"error","message":"❌ Erreur API Shopify (getAllProducts):","status":401,"statusText":"Unauthorized","timestamp":"2026-07-03T00:40:47.823Z"}
+{"level":"warn","message":"⚠️ Version API 2026-07 instable. Utilisation de 2024-01.","timestamp":"2026-07-03T00:40:56.473Z"}
+{"level":"info","message":"🔧 Shopify config: Store=signateurconfort.myshopify.com, API=2024-01","timestamp":"2026-07-03T00:40:56.474Z"}
+{"level":"info","message":"📄 Récupération de la page 1 des produits Shopify...","timestamp":"2026-07-03T00:40:56.475Z"}
+{"data":{"errors":"[API] Invalid API key or access token (unrecognized login or wrong password)"},"level":"error","message":"❌ Erreur API Shopify (getAllProducts):","status":401,"statusText":"Unauthorized","timestamp":"2026-07-03T00:40:56.739Z"}
+{"level":"info","message":"Navigateur initialisé","timestamp":"2026-07-03T00:40:57.014Z"}
+{"level":"info","message":"Connexion à Kimland...","timestamp":"2026-07-03T00:40:57.015Z"}
+{"level":"info","message":"✅ Email rempli","timestamp":"2026-07-03T00:41:01.800Z"}
+{"level":"info","message":"✅ Nom d'utilisateur rempli","timestamp":"2026-07-03T00:41:01.831Z"}
+{"level":"info","message":"✅ Mot de passe rempli","timestamp":"2026-07-03T00:41:01.864Z"}
+{"level":"info","message":"URL actuelle après connexion: https://kimland.dz/app/client/index.php","timestamp":"2026-07-03T00:41:03.012Z"}
+{"level":"info","message":"✅ Connexion réussie !","timestamp":"2026-07-03T00:41:03.013Z"}
+{"level":"info","message":"📋 Extraction depuis: https://kimland.dz/product/6918/reebok-rbk-fulgere-slide/","timestamp":"2026-07-03T00:41:03.013Z"}
+{"level":"info","message":"✅ Sélecteur de taille trouvé","timestamp":"2026-07-03T00:41:07.964Z"}
+{"level":"info","message":"✅ Extrait: REEBOK RBK FULGERE SLIDE","timestamp":"2026-07-03T00:41:07.993Z"}
+{"level":"info","message":"   📋 Référence: 100038917","timestamp":"2026-07-03T00:41:07.994Z"}
+{"level":"info","message":"   💰 Prix de vente: 5500 DA","timestamp":"2026-07-03T00:41:07.994Z"}
+{"level":"info","message":"   📸 Images: 12","timestamp":"2026-07-03T00:41:07.995Z"}
+{"level":"info","message":"   📏 Type de variante: Pointure (pointure)","timestamp":"2026-07-03T00:41:07.995Z"}
+{"level":"info","message":"   📏 Variantes: 6","timestamp":"2026-07-03T00:41:07.995Z"}
+{"level":"info","message":"   📦 Stock total: 73","timestamp":"2026-07-03T00:41:07.995Z"}
+{"level":"info","message":"   📏 Variantes:","timestamp":"2026-07-03T00:41:07.996Z"}
+{"level":"info","message":"      39: 3 pièces","timestamp":"2026-07-03T00:41:07.996Z"}
+{"level":"info","message":"      40.5: 10 pièces","timestamp":"2026-07-03T00:41:07.996Z"}
+{"level":"info","message":"      42: 17 pièces","timestamp":"2026-07-03T00:41:07.996Z"}
+{"level":"info","message":"      43: 17 pièces","timestamp":"2026-07-03T00:41:07.997Z"}
+{"level":"info","message":"      44.5: 21 pièces","timestamp":"2026-07-03T00:41:07.997Z"}
+{"level":"info","message":"      45.5: 5 pièces","timestamp":"2026-07-03T00:41:07.997Z"}
+{"level":"info","message":"Navigateur fermé","timestamp":"2026-07-03T00:41:08.133Z"}
+{"level":"warn","message":"⚠️ Version API 2026-07 instable. Utilisation de 2024-01.","timestamp":"2026-07-03T00:41:43.349Z"}
+{"level":"info","message":"🔧 Shopify config: Store=signateurconfort.myshopify.com, API=2024-01","timestamp":"2026-07-03T00:41:43.350Z"}
+{"level":"info","message":"📄 Récupération de la page 1 des produits Shopify...","timestamp":"2026-07-03T00:41:43.350Z"}
+{"data":{"errors":"[API] Invalid API key or access token (unrecognized login or wrong password)"},"level":"error","message":"❌ Erreur API Shopify (getAllProducts):","status":401,"statusText":"Unauthorized","timestamp":"2026-07-03T00:41:43.657Z"}
+{"level":"warn","message":"⚠️ Version API 2026-07 instable. Utilisation de 2024-01.","timestamp":"2026-07-03T00:41:43.664Z"}
+{"level":"info","message":"🔧 Shopify config: Store=signateurconfort.myshopify.com, API=2024-01","timestamp":"2026-07-03T00:41:43.665Z"}
+{"level":"info","message":"📂 Loaded 2 mappings","timestamp":"2026-07-03T00:41:43.668Z"}
+{"level":"info","message":"📄 Récupération de la page 1 des produits Shopify...","timestamp":"2026-07-03T00:41:43.669Z"}
+{"data":{"errors":"[API] Invalid API key or access token (unrecognized login or wrong password)"},"level":"error","message":"❌ Erreur API Shopify (getAllProducts):","status":401,"statusText":"Unauthorized","timestamp":"2026-07-03T00:41:43.956Z"}
+{"data":{"errors":"[API] Invalid API key or access token (unrecognized login or wrong password)"},"level":"error","message":"❌ Erreur API Shopify (getProduct):","status":401,"statusText":"Unauthorized","timestamp":"2026-07-03T00:41:44.272Z"}
+{"level":"info","message":"🛍️ Création du produit dans Shopify: REEBOK RBK FULGERE SLIDE","timestamp":"2026-07-03T00:41:44.273Z"}
+{"data":{"errors":"[API] Invalid API key or access token (unrecognized login or wrong password)"},"level":"error","message":"❌ Erreur API Shopify (createProduct):","status":401,"statusText":"Unauthorized","timestamp":"2026-07-03T00:41:44.568Z"}
+{"level":"warn","message":"⚠️ Version API 2026-04 instable. Utilisation de 2024-01.","timestamp":"2026-07-03T00:42:36.982Z"}
+{"level":"info","message":"🔧 Shopify config: Store=signateurconfort.myshopify.com, API=2024-01","timestamp":"2026-07-03T00:42:36.987Z"}
+{"level":"info","message":"📄 Récupération de la page 1 des produits Shopify...","timestamp":"2026-07-03T00:42:36.988Z"}
+{"level":"warn","message":"⚠️ status=any ne fonctionne pas, on réessaie sans...","timestamp":"2026-07-03T00:42:37.356Z"}
+{"level":"info","message":"✅ Page 1 (sans status=any): 250 produits récupérés (total: 250)","timestamp":"2026-07-03T00:42:38.256Z"}
+{"level":"info","message":"✅ Page 2: 170 produits récupérés (total: 420)","timestamp":"2026-07-03T00:42:38.961Z"}
+{"level":"info","message":"📦 420 produits récupérés depuis Shopify (2 pages)","timestamp":"2026-07-03T00:42:39.174Z"}
+{"level":"warn","message":"⚠️ Version API 2026-04 instable. Utilisation de 2024-01.","timestamp":"2026-07-03T00:42:39.357Z"}
+{"level":"info","message":"🔧 Shopify config: Store=signateurconfort.myshopify.com, API=2024-01","timestamp":"2026-07-03T00:42:39.358Z"}
+{"level":"info","message":"📂 Loaded 2 mappings","timestamp":"2026-07-03T00:42:39.361Z"}
+{"level":"info","message":"📄 Récupération de la page 1 des produits Shopify...","timestamp":"2026-07-03T00:42:39.362Z"}
+{"level":"warn","message":"⚠️ status=any ne fonctionne pas, on réessaie sans...","timestamp":"2026-07-03T00:42:39.588Z"}
+{"level":"info","message":"✅ Page 1 (sans status=any): 250 produits récupérés (total: 250)","timestamp":"2026-07-03T00:42:40.284Z"}
+{"level":"info","message":"✅ Page 2: 170 produits récupérés (total: 420)","timestamp":"2026-07-03T00:42:40.896Z"}
+{"level":"info","message":"📦 420 produits récupérés depuis Shopify (2 pages)","timestamp":"2026-07-03T00:42:41.108Z"}
+{"data":{"errors":"Not Found"},"level":"error","message":"❌ Erreur API Shopify (getProduct):","status":404,"statusText":"Not Found","timestamp":"2026-07-03T00:42:41.333Z"}
+{"level":"info","message":"🛍️ Création du produit dans Shopify: REEBOK RBK FULGERE SLIDE","timestamp":"2026-07-03T00:42:41.335Z"}
+{"level":"info","message":"✅ Produit créé: REEBOK RBK FULGERE SLIDE - 100038917 (ID: 8636027961540)","timestamp":"2026-07-03T00:42:54.848Z"}
+{"level":"info","message":"   🏷️  Fournisseur: Signateur Confort","timestamp":"2026-07-03T00:42:54.849Z"}
+{"level":"info","message":"   📢 Publié sur tous les canaux (global)","timestamp":"2026-07-03T00:42:54.849Z"}
+{"level":"info","message":"📢 Publication du produit sur tous les canaux de vente...","timestamp":"2026-07-03T00:42:54.850Z"}
+{"level":"info","message":"📡 3 publications trouvées","timestamp":"2026-07-03T00:42:55.126Z"}
+{"level":"info","message":"📤 Publication sur Online Store (gid://shopify/Publication/170057072836)","timestamp":"2026-07-03T00:42:55.126Z"}
+{"level":"info","message":"✅ Publié sur Online Store","timestamp":"2026-07-03T00:42:55.430Z"}
+{"level":"info","message":"📤 Publication sur Point of Sale (gid://shopify/Publication/170057138372)","timestamp":"2026-07-03T00:42:55.430Z"}
+{"level":"info","message":"✅ Publié sur Point of Sale","timestamp":"2026-07-03T00:42:55.739Z"}
+{"level":"info","message":"📤 Publication sur Facebook & Instagram (gid://shopify/Publication/170206789828)","timestamp":"2026-07-03T00:42:55.740Z"}
+{"level":"info","message":"✅ Publié sur Facebook & Instagram","timestamp":"2026-07-03T00:42:56.250Z"}
+{"level":"info","message":"🎉 Publication terminée sur tous les canaux.","timestamp":"2026-07-03T00:42:56.250Z"}
+{"level":"info","message":"💾 Saved 2 mappings","timestamp":"2026-07-03T00:42:56.253Z"}
+{"level":"info","message":"✅ Mapped Kimland 6918 → Shopify 8636027961540","timestamp":"2026-07-03T00:42:56.254Z"}
+{"level":"warn","message":"⚠️ Version API 2026-04 instable. Utilisation de 2024-01.","timestamp":"2026-07-03T00:48:05.530Z"}
+{"level":"info","message":"🔧 Shopify config: Store=signateurconfort.myshopify.com, API=2024-01","timestamp":"2026-07-03T00:48:05.537Z"}
+{"level":"info","message":"📄 Récupération de la page 1 des produits Shopify...","timestamp":"2026-07-03T00:48:05.540Z"}
+{"level":"warn","message":"⚠️ status=any ne fonctionne pas, on réessaie sans...","timestamp":"2026-07-03T00:48:06.038Z"}
+{"level":"info","message":"✅ Page 1 (sans status=any): 250 produits récupérés (total: 250)","timestamp":"2026-07-03T00:48:06.801Z"}
+{"level":"info","message":"✅ Page 2: 170 produits récupérés (total: 420)","timestamp":"2026-07-03T00:48:07.555Z"}
+{"level":"info","message":"📦 420 produits récupérés depuis Shopify (2 pages)","timestamp":"2026-07-03T00:48:07.763Z"}
+{"level":"warn","message":"⚠️ Version API 2026-04 instable. Utilisation de 2024-01.","timestamp":"2026-07-03T00:48:07.819Z"}
+{"level":"info","message":"🔧 Shopify config: Store=signateurconfort.myshopify.com, API=2024-01","timestamp":"2026-07-03T00:48:07.820Z"}
+{"level":"info","message":"📄 Récupération de la page 1 des produits Shopify...","timestamp":"2026-07-03T00:48:07.821Z"}
+{"level":"warn","message":"⚠️ status=any ne fonctionne pas, on réessaie sans...","timestamp":"2026-07-03T00:48:08.068Z"}
+{"level":"info","message":"✅ Page 1 (sans status=any): 250 produits récupérés (total: 250)","timestamp":"2026-07-03T00:48:08.807Z"}
+{"level":"info","message":"✅ Page 2: 170 produits récupérés (total: 420)","timestamp":"2026-07-03T00:48:09.436Z"}
+{"level":"info","message":"📦 420 produits récupérés depuis Shopify (2 pages)","timestamp":"2026-07-03T00:48:09.641Z"}
+{"level":"warn","message":"⚠️ Version API 2026-04 instable. Utilisation de 2024-01.","timestamp":"2026-07-03T00:48:11.539Z"}
+{"level":"info","message":"🔧 Shopify config: Store=signateurconfort.myshopify.com, API=2024-01","timestamp":"2026-07-03T00:48:11.540Z"}
+{"level":"info","message":"📄 Récupération de la page 1 des produits Shopify...","timestamp":"2026-07-03T00:48:11.541Z"}
+{"level":"warn","message":"⚠️ status=any ne fonctionne pas, on réessaie sans...","timestamp":"2026-07-03T00:48:11.853Z"}
+{"level":"info","message":"✅ Page 1 (sans status=any): 250 produits récupérés (total: 250)","timestamp":"2026-07-03T00:48:12.548Z"}
+{"level":"info","message":"✅ Page 2: 170 produits récupérés (total: 420)","timestamp":"2026-07-03T00:48:13.207Z"}
+{"level":"info","message":"📦 420 produits récupérés depuis Shopify (2 pages)","timestamp":"2026-07-03T00:48:13.418Z"}
+{"level":"info","message":"Navigateur initialisé","timestamp":"2026-07-03T00:48:13.914Z"}
+{"level":"info","message":"Connexion à Kimland...","timestamp":"2026-07-03T00:48:13.916Z"}
+{"level":"info","message":"✅ Email rempli","timestamp":"2026-07-03T00:48:16.461Z"}
+{"level":"info","message":"✅ Nom d'utilisateur rempli","timestamp":"2026-07-03T00:48:16.484Z"}
+{"level":"info","message":"✅ Mot de passe rempli","timestamp":"2026-07-03T00:48:16.518Z"}
+{"level":"info","message":"URL actuelle après connexion: https://kimland.dz/app/client/index.php","timestamp":"2026-07-03T00:48:17.790Z"}
+{"level":"info","message":"✅ Connexion réussie !","timestamp":"2026-07-03T00:48:17.791Z"}
+{"level":"info","message":"📋 Extraction depuis: https://kimland.dz/product/6918/reebok-rbk-fulgere-slide/","timestamp":"2026-07-03T00:48:17.794Z"}
+{"level":"info","message":"✅ Sélecteur de taille trouvé","timestamp":"2026-07-03T00:48:22.355Z"}
+{"level":"info","message":"✅ Extrait: REEBOK RBK FULGERE SLIDE","timestamp":"2026-07-03T00:48:22.383Z"}
+{"level":"info","message":"   📋 Référence: 100038917","timestamp":"2026-07-03T00:48:22.383Z"}
+{"level":"info","message":"   💰 Prix de vente: 5500 DA","timestamp":"2026-07-03T00:48:22.384Z"}
+{"level":"info","message":"   📸 Images: 12","timestamp":"2026-07-03T00:48:22.384Z"}
+{"level":"info","message":"   📏 Type de variante: Pointure (pointure)","timestamp":"2026-07-03T00:48:22.384Z"}
+{"level":"info","message":"   📏 Variantes: 6","timestamp":"2026-07-03T00:48:22.384Z"}
+{"level":"info","message":"   📦 Stock total: 73","timestamp":"2026-07-03T00:48:22.384Z"}
+{"level":"info","message":"   📏 Variantes:","timestamp":"2026-07-03T00:48:22.385Z"}
+{"level":"info","message":"      39: 3 pièces","timestamp":"2026-07-03T00:48:22.385Z"}
+{"level":"info","message":"      40.5: 10 pièces","timestamp":"2026-07-03T00:48:22.385Z"}
+{"level":"info","message":"      42: 17 pièces","timestamp":"2026-07-03T00:48:22.385Z"}
+{"level":"info","message":"      43: 17 pièces","timestamp":"2026-07-03T00:48:22.386Z"}
+{"level":"info","message":"      44.5: 21 pièces","timestamp":"2026-07-03T00:48:22.386Z"}
+{"level":"info","message":"      45.5: 5 pièces","timestamp":"2026-07-03T00:48:22.386Z"}
+{"level":"info","message":"Navigateur fermé","timestamp":"2026-07-03T00:48:22.508Z"}
+{"level":"warn","message":"⚠️ Version API 2026-04 instable. Utilisation de 2024-01.","timestamp":"2026-07-03T00:48:33.730Z"}
+{"level":"info","message":"🔧 Shopify config: Store=signateurconfort.myshopify.com, API=2024-01","timestamp":"2026-07-03T00:48:33.731Z"}
+{"level":"info","message":"📄 Récupération de la page 1 des produits Shopify...","timestamp":"2026-07-03T00:48:33.732Z"}
+{"level":"warn","message":"⚠️ status=any ne fonctionne pas, on réessaie sans...","timestamp":"2026-07-03T00:48:34.076Z"}
+{"level":"info","message":"✅ Page 1 (sans status=any): 250 produits récupérés (total: 250)","timestamp":"2026-07-03T00:48:34.795Z"}
+{"level":"info","message":"✅ Page 2: 170 produits récupérés (total: 420)","timestamp":"2026-07-03T00:48:35.414Z"}
+{"level":"info","message":"📦 420 produits récupérés depuis Shopify (2 pages)","timestamp":"2026-07-03T00:48:35.625Z"}
+{"level":"warn","message":"⚠️ Version API 2026-04 instable. Utilisation de 2024-01.","timestamp":"2026-07-03T00:48:35.736Z"}
+{"level":"info","message":"🔧 Shopify config: Store=signateurconfort.myshopify.com, API=2024-01","timestamp":"2026-07-03T00:48:35.737Z"}
+{"level":"info","message":"📂 Loaded 2 mappings","timestamp":"2026-07-03T00:48:35.751Z"}
+{"level":"info","message":"📄 Récupération de la page 1 des produits Shopify...","timestamp":"2026-07-03T00:48:35.752Z"}
+{"level":"warn","message":"⚠️ status=any ne fonctionne pas, on réessaie sans...","timestamp":"2026-07-03T00:48:36.019Z"}
+{"level":"info","message":"✅ Page 1 (sans status=any): 250 produits récupérés (total: 250)","timestamp":"2026-07-03T00:48:36.786Z"}
+{"level":"info","message":"✅ Page 2: 170 produits récupérés (total: 420)","timestamp":"2026-07-03T00:48:37.416Z"}
+{"level":"info","message":"📦 420 produits récupérés depuis Shopify (2 pages)","timestamp":"2026-07-03T00:48:37.616Z"}
+{"data":{"errors":"Not Found"},"level":"error","message":"❌ Erreur API Shopify (getProduct):","status":404,"statusText":"Not Found","timestamp":"2026-07-03T00:48:37.968Z"}
+{"level":"info","message":"🛍️ Création du produit dans Shopify: REEBOK RBK FULGERE SLIDE","timestamp":"2026-07-03T00:48:37.970Z"}
+{"level":"info","message":"✅ Produit créé: REEBOK RBK FULGERE SLIDE - 100038917 (ID: 8636037660868)","timestamp":"2026-07-03T00:48:51.682Z"}
+{"level":"info","message":"   🏷️  Fournisseur: Signateur Confort","timestamp":"2026-07-03T00:48:51.683Z"}
+{"level":"info","message":"   📢 Publié sur tous les canaux (global)","timestamp":"2026-07-03T00:48:51.683Z"}
+{"level":"info","message":"📢 Publication du produit sur tous les canaux de vente...","timestamp":"2026-07-03T00:48:51.684Z"}
+{"level":"info","message":"📡 3 publications trouvées","timestamp":"2026-07-03T00:48:51.933Z"}
+{"level":"info","message":"📤 Publication sur Online Store (gid://shopify/Publication/170057072836)","timestamp":"2026-07-03T00:48:51.934Z"}
+{"level":"info","message":"✅ Publié sur Online Store","timestamp":"2026-07-03T00:48:52.212Z"}
+{"level":"info","message":"📤 Publication sur Point of Sale (gid://shopify/Publication/170057138372)","timestamp":"2026-07-03T00:48:52.212Z"}
+{"level":"info","message":"✅ Publié sur Point of Sale","timestamp":"2026-07-03T00:48:52.501Z"}
+{"level":"info","message":"📤 Publication sur Facebook & Instagram (gid://shopify/Publication/170206789828)","timestamp":"2026-07-03T00:48:52.510Z"}
+{"level":"info","message":"✅ Publié sur Facebook & Instagram","timestamp":"2026-07-03T00:48:53.120Z"}
+{"level":"info","message":"🎉 Publication terminée sur tous les canaux.","timestamp":"2026-07-03T00:48:53.120Z"}
+{"level":"info","message":"💾 Saved 2 mappings","timestamp":"2026-07-03T00:48:53.122Z"}
+{"level":"info","message":"✅ Mapped Kimland 6918 → Shopify 8636037660868","timestamp":"2026-07-03T00:48:53.122Z"}

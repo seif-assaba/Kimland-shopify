@@ -4437,3 +4437,13 @@
 {"data":{"errors":"Not Found"},"level":"error","message":"❌ Erreur API Shopify (getProduct):","status":404,"statusText":"Not Found","timestamp":"2026-07-02T22:53:48.983Z"}
 {"data":{"errors":"Not Found"},"level":"error","message":"❌ Erreur API Shopify (getProduct):","status":404,"statusText":"Not Found","timestamp":"2026-07-02T23:05:39.252Z"}
 {"data":{"errors":"Not Found"},"level":"error","message":"❌ Erreur API Shopify (getProduct):","status":404,"statusText":"Not Found","timestamp":"2026-07-02T23:21:40.314Z"}
+{"data":{"errors":"Not Found"},"level":"error","message":"❌ Erreur API Shopify (getProduct):","status":404,"statusText":"Not Found","timestamp":"2026-07-03T00:20:46.071Z"}
+{"data":{"errors":"[API] Invalid API key or access token (unrecognized login or wrong password)"},"level":"error","message":"❌ Erreur API Shopify (getAllProducts):","status":401,"statusText":"Unauthorized","timestamp":"2026-07-03T00:40:43.747Z"}
+{"data":{"errors":"[API] Invalid API key or access token (unrecognized login or wrong password)"},"level":"error","message":"❌ Erreur API Shopify (getAllProducts):","status":401,"statusText":"Unauthorized","timestamp":"2026-07-03T00:40:47.823Z"}
+{"data":{"errors":"[API] Invalid API key or access token (unrecognized login or wrong password)"},"level":"error","message":"❌ Erreur API Shopify (getAllProducts):","status":401,"statusText":"Unauthorized","timestamp":"2026-07-03T00:40:56.739Z"}
+{"data":{"errors":"[API] Invalid API key or access token (unrecognized login or wrong password)"},"level":"error","message":"❌ Erreur API Shopify (getAllProducts):","status":401,"statusText":"Unauthorized","timestamp":"2026-07-03T00:41:43.657Z"}
+{"data":{"errors":"[API] Invalid API key or access token (unrecognized login or wrong password)"},"level":"error","message":"❌ Erreur API Shopify (getAllProducts):","status":401,"statusText":"Unauthorized","timestamp":"2026-07-03T00:41:43.956Z"}
+{"data":{"errors":"[API] Invalid API key or access token (unrecognized login or wrong password)"},"level":"error","message":"❌ Erreur API Shopify (getProduct):","status":401,"statusText":"Unauthorized","timestamp":"2026-07-03T00:41:44.272Z"}
+{"data":{"errors":"[API] Invalid API key or access token (unrecognized login or wrong password)"},"level":"error","message":"❌ Erreur API Shopify (createProduct):","status":401,"statusText":"Unauthorized","timestamp":"2026-07-03T00:41:44.568Z"}
+{"data":{"errors":"Not Found"},"level":"error","message":"❌ Erreur API Shopify (getProduct):","status":404,"statusText":"Not Found","timestamp":"2026-07-03T00:42:41.333Z"}
+{"data":{"errors":"Not Found"},"level":"error","message":"❌ Erreur API Shopify (getProduct):","status":404,"statusText":"Not Found","timestamp":"2026-07-03T00:48:37.968Z"}

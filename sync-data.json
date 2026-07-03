@@ -1,7 +1,67 @@
 {
+  "6918": {
+    "shopifyId": 8636037660868,
+    "lastSync": "2026-07-03T00:48:53.121Z",
+    "productData": {
+      "kimlandId": "6918",
+      "url": "https://kimland.dz/product/6918/reebok-rbk-fulgere-slide/",
+      "title": "REEBOK RBK FULGERE SLIDE",
+      "reference": "100038917",
+      "price": 5500,
+      "images": [
+        "https://kimland.dz/upload/55064196-28245526.jpg",
+        "https://kimland.dz/upload/10596667-46121273.jpg",
+        "https://kimland.dz/upload/09625909-86655196.jpg",
+        "https://kimland.dz/upload/06478243-14114901.jpg",
+        "https://kimland.dz/upload/48689489-67934656.jpg",
+        "https://kimland.dz/upload/45253693-06886180.jpg",
+        "https://kimland.dz/upload/85943300-42489237.jpg",
+        "https://kimland.dz/upload/84282833-22156338.jpg",
+        "https://kimland.dz/upload/69596852-58045591.jpg",
+        "https://kimland.dz/upload/38536936-04284933.jpg",
+        "https://kimland.dz/upload/26901626-89693444.jpg",
+        "https://kimland.dz/upload/03198282-21486273.jpg"
+      ],
+      "variantType": "pointure",
+      "variantLabel": "Pointure",
+      "variants": [
+        {
+          "value": "39",
+          "quantity": 3
+        },
+        {
+          "value": "40.5",
+          "quantity": 10
+        },
+        {
+          "value": "42",
+          "quantity": 17
+        },
+        {
+          "value": "43",
+          "quantity": 17
+        },
+        {
+          "value": "44.5",
+          "quantity": 21
+        },
+        {
+          "value": "45.5",
+          "quantity": 5
+        }
+      ],
+      "totalStock": 73,
+      "imageCount": 12,
+      "variantCount": 6,
+      "uploaded": false,
+      "shopifyId": null,
+      "_isNew": true
+    },
+    "version": 3
+  },
   "7436": {
-    "shopifyId": 8635995390148,
-    "lastSync": "2026-07-02T23:21:47.088Z",
+    "shopifyId": 8636016623812,
+    "lastSync": "2026-07-03T00:20:53.075Z",
     "productData": {
       "kimlandId": "7436",
       "url": "https://kimland.dz/product/7436/rider-street-slide-ad-bluebluegreen/",
@@ -38,6 +98,6 @@
       "shopifyId": null,
       "_isNew": true
     },
-    "version": 4
+    "version": 5
   }
 }

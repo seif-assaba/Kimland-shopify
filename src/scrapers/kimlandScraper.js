@@ -339,12 +339,13 @@ class KimlandScraper {
         }
 
         // =============================================
-        // VARIANTES - Depuis le sélecteur déroulant
+        // VARIANTES - Support select ET boutons
         // =============================================
         const variants = [];
         let variantType = 'taille';
         let variantLabel = 'Taille';
 
+        // Détection du type de variante
         if (pageText.includes('Pointure') || pageText.includes('pointure')) {
           variantType = 'pointure';
           variantLabel = 'Pointure';
@@ -356,91 +357,136 @@ class KimlandScraper {
           variantLabel = 'Taille';
         }
 
-        // Trouver le sélecteur déroulant
-        const selectors = [
-          'select#forSize',
-          'select[name="pointure"]',
-          '.form-configurable select',
-          '.attribute-select',
-          'select'
-        ];
-
-        let select = null;
-        for (const selector of selectors) {
-          select = document.querySelector(selector);
-          if (select) break;
-        }
-
+        // --- 1. Chercher un select déroulant (cas classique) ---
+        const select = document.querySelector('select#forSize, select[name="pointure"], .form-configurable select, .attribute-select, select');
         if (select) {
           const options = select.querySelectorAll('option');
           options.forEach(opt => {
             const text = cleanText(opt.textContent);
-            const match = text.match(/^([\d.]+)\s*[-:]\s*(\d+)/i);
+            // Format "42 - 17 pièce(s)" ou "40.5 - 6"
+            const match = text.match(/^([\d.]+)\s*[-:]\s*(\d+)/);
             if (match) {
               const value = match[1].trim();
               const quantity = parseInt(match[2]);
               if (value && !isNaN(quantity) && quantity > 0) {
-                if (/^[\d.]+$/.test(value)) {
-                  const existing = variants.find(v => v.value === value);
-                  if (!existing) {
-                    variants.push({ value, quantity });
-                  }
+                if (!variants.some(v => v.value === value)) {
+                  variants.push({ value, quantity });
                 }
               }
             }
           });
         }
 
-        // Fallback: variantes textuelles (ex: "Standard - 151")
+        // --- 2. Si pas de select, chercher des boutons / éléments de taille ---
         if (variants.length === 0) {
-          const dimMatch = pageText.match(/Dimension\s*[:：]\s*([A-Za-z0-9\s]+?)\s*[-:]\s*(\d+)\s*pi[èé]ce/i);
-          if (dimMatch) {
-            const value = dimMatch[1].trim();
-            const quantity = parseInt(dimMatch[2]);
-            if (value && !isNaN(quantity) && quantity > 0) {
-              variants.push({ value, quantity });
+          // Sélecteurs pour les éléments de taille (boutons, swatches, etc.)
+          const sizeSelectors = [
+            '.size-option',
+            '.swatch-option',
+            '.variant-option',
+            '.product-option',
+            '.size-selector button',
+            '.option-selector button',
+            '.product-variants button',
+            '.swatch-element',
+            '.size-list .size-item',
+            '.option-list .option',
+            'button[data-size]',
+            'button[data-value]',
+            'li.size-option',
+            'li.variant-option',
+            '.product-options .option',
+            '.size-options .option',
+            '.variant-options .option'
+          ];
+
+          let sizeElements = [];
+          for (const sel of sizeSelectors) {
+            const els = document.querySelectorAll(sel);
+            if (els.length > 0) {
+              sizeElements = els;
+              break;
             }
           }
 
-          if (variants.length === 0) {
-            const pattern = /([A-Za-z0-9\s]+?)\s*[-:]\s*(\d+)\s*pi[èé]ce/gi;
+          // Si on a trouvé des éléments, on extrait la valeur (le texte)
+          if (sizeElements.length > 0) {
+            sizeElements.forEach(el => {
+              let value = el.textContent.trim();
+              // Nettoyer : enlever les unités (ex: "39" ou "40.5")
+              // Ne garder que les nombres et points
+              const cleanValue = value.match(/^[\d.]+/);
+              if (cleanValue) {
+                value = cleanValue[0];
+                // On ne peut pas connaître la quantité ici, on la laisse à 0
+                // (elle sera peut-être ailleurs, mais on fait au mieux)
+                if (!variants.some(v => v.value === value)) {
+                  variants.push({ value, quantity: 0 });
+                }
+              }
+            });
+          }
+        }
+
+        // --- 3. Fallback : scanner le texte de la page pour les patterns ---
+        if (variants.length === 0) {
+          // Patterns pour trouver des lignes comme "42 - 17" ou "40.5 - 6"
+          const patterns = [
+            /([\d.]+)\s*[-:]\s*(\d+)\s*pi[èé]ce/gi,
+            /([\d.]+)\s*[-:]\s*(\d+)/gi
+          ];
+          const matches = [];
+          for (const pattern of patterns) {
             let match;
             while ((match = pattern.exec(pageText)) !== null) {
-              const rawValue = match[1].trim();
+              const value = match[1].trim();
               const quantity = parseInt(match[2]);
-              if (rawValue && !isNaN(quantity) && quantity > 0) {
-                const upperValue = rawValue.toUpperCase();
-                if (!['VENTE', 'RENCE', 'UNITÉS', 'UNITES', 'TOTAL', 'STOCK', 
-                      'DISPONIBILITÉ', 'DISPONIBILITE', 'REFERENCE', 'RÉFÉRENCE', 'CODE',
-                      'GARANTIE', 'SERVICE', 'COULEUR', 'MATIÈRE', 'MATIERE',
-                      'PRIX', 'VENTE', 'HT'].includes(upperValue) &&
-                    !upperValue.includes('TAILLE') && !upperValue.includes('SIZE') &&
-                    !upperValue.includes('POINTURE') && !upperValue.includes('DIMENSION') &&
-                    !upperValue.includes('PRIX') && !upperValue.includes('VENTE')) {
-                  
-                  const existing = variants.find(v => v.value === rawValue);
-                  if (!existing) {
-                    variants.push({ value: rawValue, quantity });
-                  } else if (quantity > existing.quantity) {
-                    existing.quantity = quantity;
-                  }
-                }
+              if (value && !isNaN(quantity) && quantity > 0) {
+                matches.push({ value, quantity });
+              }
+            }
+          }
+          // Déduplication
+          const seen = new Set();
+          for (const m of matches) {
+            if (!seen.has(m.value)) {
+              seen.add(m.value);
+              variants.push(m);
+            } else {
+              // Si déjà présent, garder la plus grande quantité
+              const existing = variants.find(v => v.value === m.value);
+              if (existing && m.quantity > existing.quantity) {
+                existing.quantity = m.quantity;
               }
             }
           }
         }
 
-        // Trier les variantes
+        // --- 4. Si on a des variants mais sans quantités, essayer de récupérer les quantités depuis la page ---
+        if (variants.length > 0 && variants.every(v => v.quantity === 0)) {
+          // Chercher un total stock ou des quantités par taille
+          const stockMatch = pageText.match(/Stock\s*[:：]\s*(\d+)\s*pi[èé]ce/i);
+          if (stockMatch) {
+            const total = parseInt(stockMatch[1]);
+            // Si une seule variante, on lui attribue le total
+            if (variants.length === 1) {
+              variants[0].quantity = total;
+            }
+            // Sinon, on ne peut pas répartir, on laisse 0.
+          }
+          // Sinon, on garde 0.
+        }
+
+        // Trier les variantes (numériquement)
         variants.sort((a, b) => {
           const numA = parseFloat(a.value);
           const numB = parseFloat(b.value);
-          if (!isNaN(numA) && !isNaN(numB)) {
-            return numA - numB;
-          }
+          if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
           return a.value.localeCompare(b.value);
         });
 
-        const totalStock = variants.reduce((sum, v) => sum + v.quantity, 0);
+        // Mettre à jour le stock total à partir des quantités
+        const totalStock = variants.reduce((sum, v) => sum + (v.quantity || 0), 0);
         const productId = window.location.href.match(/\/product\/(\d+)/)?.[1] || Date.now().toString();
 
         return {
