@@ -59,19 +59,15 @@ router.post('/extract', async (req, res) => {
   if (!url) {
     return res.status(400).json({
       success: false,
-      message: 'L\'URL du produit est requise'
+      message: "L'URL du produit est requise"
     });
   }
 
-  let scraper = null;
-
   try {
-    scraper = new KimlandScraper();
-    await scraper.initialize();
-    await scraper.login();
+    const scraper = await KimlandScraper.getInstance();
     const product = await scraper.extractProductFromUrl(url);
-    await scraper.close();
-    
+    try { await scraper.maybeRestartBrowser(); } catch (_) {}
+
     if (product) {
       req.session.lastProduct = product;
       res.json({
@@ -85,13 +81,12 @@ router.post('/extract', async (req, res) => {
         message: 'Impossible d\'extraire le produit'
       });
     }
-    
   } catch (error) {
     console.error('❌ Erreur:', error.message);
-    if (scraper) await scraper.close();
+    try { await KimlandScraper.closeInstance(); } catch (_) {}
     res.status(500).json({
       success: false,
-      message: 'Échec de l\'extraction du produit',
+      message: "Échec de l'extraction du produit",
       error: error.message
     });
   }
@@ -1633,6 +1628,403 @@ router.post('/fix-all-products-fast', async (req, res) => {
       details: results
     }
   });
+});
+
+
+// =============================================
+// SYNC ONE - prix + stock uniquement (par SKU)
+// =============================================
+function isValidKimlandExtract(data) {
+  if (!data || typeof data !== 'object') return { ok: false, reason: 'Extraction vide' };
+  const title = String(data.title || '').trim();
+  const price = Number(data.price || 0);
+  if (!title || /^not\s*found$/i.test(title) || /^404/i.test(title) || title === 'N/A') {
+    return { ok: false, reason: 'Page Kimland introuvable / titre invalide' };
+  }
+  if (price <= 0) {
+    return { ok: false, reason: 'Prix de vente = 0 — refus de modifier Shopify' };
+  }
+  return { ok: true };
+}
+
+function pickReferenceFromShopifyProduct(product) {
+  if (!product) return '';
+  const variants = product.variants || [];
+  for (const v of variants) {
+    const sku = String(v.sku || '').trim();
+    if (sku && sku !== 'N/A' && sku.length > 2) return sku;
+  }
+  for (const v of variants) {
+    const barcode = String(v.barcode || '').trim();
+    if (barcode && barcode.length > 2) return barcode;
+  }
+  return '';
+}
+
+router.post('/sync-one', async (req, res) => {
+  const { shopifyProductId } = req.body;
+  if (!shopifyProductId) {
+    return res.status(400).json({ success: false, message: 'shopifyProductId est requis' });
+  }
+
+  const shopify = new ShopifyClient();
+  const store = new SyncStore();
+
+  try {
+    const sp = await shopify.getProduct(shopifyProductId);
+    if (!sp) {
+      return res.status(404).json({ success: false, message: 'Produit Shopify introuvable' });
+    }
+
+    const titleHint = sp.title || String(shopifyProductId);
+    if (String(sp.status || '').toLowerCase() === 'archived') {
+      return res.json({
+        success: false,
+        skipped: true,
+        message: 'Produit archivé',
+        title: titleHint,
+        shopifyId: shopifyProductId
+      });
+    }
+
+    const reference = pickReferenceFromShopifyProduct(sp);
+    if (!reference) {
+      return res.json({
+        success: false,
+        skipped: true,
+        message: 'Aucun SKU/barcode sur les variantes',
+        title: titleHint,
+        shopifyId: shopifyProductId
+      });
+    }
+
+    logger.info(`🔄 SYNC-ONE #${shopifyProductId} | ${titleHint} | SKU=${reference}`);
+
+    let url = null;
+    try {
+      const mappings = store.getAllMappings() || {};
+      for (const [, m] of Object.entries(mappings)) {
+        if (String(m.shopifyId || m.shopify_id) === String(shopifyProductId)) {
+          const u = m.url || m.kimlandUrl;
+          if (u && /kimland\.dz\/product\/\d+/i.test(String(u))) {
+            url = u;
+            break;
+          }
+        }
+      }
+    } catch (_) {}
+
+    const scraper = await KimlandScraper.getInstance();
+    if (!url) {
+      url = await scraper.findProductUrlByReference(reference);
+    }
+
+    if (!url) {
+      try { await scraper.maybeRestartBrowser(); } catch (_) {}
+      return res.json({
+        success: false,
+        error: true,
+        message: 'Introuvable sur Kimland pour ce SKU',
+        title: titleHint,
+        reference,
+        shopifyId: shopifyProductId
+      });
+    }
+
+    const kimlandData = await scraper.extractProductFromUrl(url);
+    const check = isValidKimlandExtract(kimlandData);
+    if (!check.ok) {
+      try { await scraper.maybeRestartBrowser(); } catch (_) {}
+      return res.json({
+        success: false,
+        error: true,
+        message: check.reason,
+        title: titleHint,
+        reference,
+        url,
+        shopifyId: shopifyProductId
+      });
+    }
+
+    if (typeof shopify.syncPriceAndStock !== 'function') {
+      return res.status(500).json({
+        success: false,
+        message: 'syncPriceAndStock manquant dans ShopifyClient — mettez à jour shopifyClient.js'
+      });
+    }
+
+    const result = await shopify.syncPriceAndStock(shopifyProductId, kimlandData);
+
+    try {
+      if (kimlandData.kimlandId) {
+        store.saveMapping(kimlandData.kimlandId, shopifyProductId, {
+          title: kimlandData.title,
+          reference: kimlandData.reference || reference,
+          url: kimlandData.url || url,
+          price: kimlandData.price,
+          costPrice: kimlandData.costPrice,
+          lastSyncedAt: new Date().toISOString()
+        });
+      }
+    } catch (_) {}
+
+    try { await scraper.maybeRestartBrowser(); } catch (_) {}
+
+    res.json({
+      success: true,
+      message: 'Synchronisé',
+      title: kimlandData.title || titleHint,
+      reference: kimlandData.reference || reference,
+      shopifyId: shopifyProductId,
+      report: result.report
+    });
+  } catch (error) {
+    logger.error(`❌ sync-one échoué #${shopifyProductId}:`, error.message);
+    try { await KimlandScraper.closeInstance(); } catch (_) {}
+    res.status(500).json({
+      success: false,
+      error: true,
+      message: error.message,
+      shopifyId: shopifyProductId
+    });
+  }
+});
+
+
+// =============================================
+// SYNC ALL en arrière-plan (fiable sur téléphone)
+// Le serveur fait le travail ; le client ne fait que poller
+// =============================================
+const syncJob = {
+  running: false,
+  current: 0,
+  total: 0,
+  title: '',
+  synced: [],
+  errors: [],
+  skipped: [],
+  startedAt: null,
+  finishedAt: null,
+  message: ''
+};
+
+async function runSyncAllJob() {
+  const shopify = new ShopifyClient();
+  const store = new SyncStore();
+
+  try {
+    logger.info('📦 SYNC-ALL job: chargement produits Shopify...');
+    const allProducts = await shopify.getAllProducts(250);
+    const list = (allProducts || []).filter(
+      (p) => String(p.status || '').toLowerCase() !== 'archived'
+    );
+
+    syncJob.total = list.length;
+    syncJob.current = 0;
+    logger.info(`🔄 SYNC-ALL job: ${list.length} produits`);
+
+    const scraper = await KimlandScraper.getInstance();
+
+    for (let i = 0; i < list.length; i++) {
+      if (!syncJob.running) {
+        syncJob.message = 'Arrêté par l\'utilisateur';
+        break;
+      }
+
+      const sp = list[i];
+      const shopifyId = sp.id;
+      const titleHint = sp.title || String(shopifyId);
+      syncJob.current = i + 1;
+      syncJob.title = titleHint;
+
+      const reference = pickReferenceFromShopifyProduct(sp);
+      if (!reference) {
+        syncJob.skipped.push({
+          shopifyId,
+          title: titleHint,
+          reason: 'Aucun SKU/barcode'
+        });
+        continue;
+      }
+
+      try {
+        logger.info(
+          `🔄 [${i + 1}/${list.length}] ${titleHint} | SKU=${reference}`
+        );
+
+        let url = null;
+        try {
+          const mappings = store.getAllMappings() || {};
+          for (const [, m] of Object.entries(mappings)) {
+            if (String(m.shopifyId || m.shopify_id) === String(shopifyId)) {
+              const u = m.url || m.kimlandUrl;
+              if (u && /kimland\.dz\/product\/\d+/i.test(String(u))) {
+                url = u;
+                break;
+              }
+            }
+          }
+        } catch (_) {}
+
+        if (!url) {
+          url = await scraper.findProductUrlByReference(reference);
+        }
+
+        if (!url) {
+          syncJob.errors.push({
+            shopifyId,
+            title: titleHint,
+            reference,
+            reason: 'Introuvable sur Kimland'
+          });
+          try {
+            await scraper.maybeRestartBrowser();
+          } catch (_) {}
+          continue;
+        }
+
+        const kimlandData = await scraper.extractProductFromUrl(url);
+        const check = isValidKimlandExtract(kimlandData);
+        if (!check.ok) {
+          syncJob.errors.push({
+            shopifyId,
+            title: titleHint,
+            reference,
+            reason: check.reason
+          });
+          try {
+            await scraper.maybeRestartBrowser();
+          } catch (_) {}
+          continue;
+        }
+
+        const result = await shopify.syncPriceAndStock(shopifyId, kimlandData);
+
+        try {
+          if (kimlandData.kimlandId) {
+            store.saveMapping(kimlandData.kimlandId, shopifyId, {
+              title: kimlandData.title,
+              reference: kimlandData.reference || reference,
+              url: kimlandData.url || url,
+              price: kimlandData.price,
+              costPrice: kimlandData.costPrice,
+              lastSyncedAt: new Date().toISOString()
+            });
+          }
+        } catch (_) {}
+
+        syncJob.synced.push({
+          shopifyId,
+          title: kimlandData.title || titleHint,
+          reference: kimlandData.reference || reference,
+          sellingPrice: result.report && result.report.sellingPrice,
+          costPrice: result.report && result.report.costPrice
+        });
+
+        try {
+          await scraper.maybeRestartBrowser();
+        } catch (_) {}
+      } catch (err) {
+        logger.error(`❌ Sync job item ${titleHint}: ${err.message}`);
+        syncJob.errors.push({
+          shopifyId,
+          title: titleHint,
+          reference,
+          reason: err.message
+        });
+        try {
+          await KimlandScraper.closeInstance();
+        } catch (_) {}
+        // reopen for next items
+        try {
+          await KimlandScraper.getInstance();
+        } catch (_) {}
+      }
+
+      // petite pause anti rate-limit
+      await new Promise((r) => setTimeout(r, 250));
+    }
+
+    syncJob.message =
+      `Terminé: ${syncJob.synced.length} ok, ${syncJob.errors.length} erreurs, ${syncJob.skipped.length} ignorés`;
+    logger.info(`🎉 SYNC-ALL job: ${syncJob.message}`);
+  } catch (error) {
+    syncJob.message = 'Erreur fatale: ' + error.message;
+    logger.error('❌ SYNC-ALL job failed:', error.message);
+  } finally {
+    syncJob.running = false;
+    syncJob.finishedAt = new Date().toISOString();
+    try {
+      await KimlandScraper.closeInstance();
+    } catch (_) {}
+  }
+}
+
+router.post('/sync-all-start', async (req, res) => {
+  if (syncJob.running) {
+    return res.json({
+      success: true,
+      alreadyRunning: true,
+      job: {
+        running: true,
+        current: syncJob.current,
+        total: syncJob.total,
+        title: syncJob.title
+      }
+    });
+  }
+
+  syncJob.running = true;
+  syncJob.current = 0;
+  syncJob.total = 0;
+  syncJob.title = '';
+  syncJob.synced = [];
+  syncJob.errors = [];
+  syncJob.skipped = [];
+  syncJob.startedAt = new Date().toISOString();
+  syncJob.finishedAt = null;
+  syncJob.message = 'Démarrage...';
+
+  // Répond tout de suite — le travail continue sur le serveur
+  res.json({ success: true, started: true, message: 'Sync démarrée sur le serveur' });
+
+  setImmediate(() => {
+    runSyncAllJob().catch((e) => {
+      logger.error('sync job crash:', e.message);
+      syncJob.running = false;
+      syncJob.message = e.message;
+      syncJob.finishedAt = new Date().toISOString();
+    });
+  });
+});
+
+router.get('/sync-all-status', (req, res) => {
+  res.json({
+    success: true,
+    job: {
+      running: syncJob.running,
+      current: syncJob.current,
+      total: syncJob.total,
+      title: syncJob.title,
+      message: syncJob.message,
+      startedAt: syncJob.startedAt,
+      finishedAt: syncJob.finishedAt,
+      syncedCount: syncJob.synced.length,
+      errorCount: syncJob.errors.length,
+      skippedCount: syncJob.skipped.length,
+      // résumé limité pour le popup
+      errors: syncJob.running ? [] : syncJob.errors.slice(0, 50),
+      synced: syncJob.running ? [] : syncJob.synced.slice(0, 30)
+    }
+  });
+});
+
+router.post('/sync-all-stop', (req, res) => {
+  if (syncJob.running) {
+    syncJob.running = false;
+    syncJob.message = 'Arrêt demandé...';
+  }
+  res.json({ success: true, message: 'Arrêt demandé' });
 });
 
 module.exports = router;

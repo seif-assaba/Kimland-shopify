@@ -679,21 +679,22 @@
     <div class="card">
       <div class="card-title">
         <span class="icon">📦</span>
-        Ajouter des produits (jusqu'à 10)
+        Ajouter des produits (jusqu'à 50)
       </div>
       <p style="color:#888;margin-bottom:18px;font-weight:400;">
-        Entrez jusqu'à 10 URLs de produits Kimland (une par ligne) pour les extraire et les gérer.
+        Entrez jusqu'à 50 URLs de produits Kimland (une par ligne) pour les extraire et les gérer.
       </p>
 
       <div class="input-group">
         <label for="bulkUrls">🔗 URLs des produits (une par ligne)</label>
         <textarea id="bulkUrls" rows="6" placeholder="ajoutez les URLs ici..."></textarea>
-        <div class="char-count"><span id="urlCount">0</span> / 10 URLs</div>
+        <div class="char-count"><span id="urlCount">0</span> / 50 URLs</div>
       </div>
 
       <div class="btn-group">
         <button class="btn btn-bulk" id="extractBtn" onclick="extractProducts()">🔍 Extraire les produits</button>
         <button class="btn btn-success" id="uploadAllBtn" onclick="uploadAll()" disabled>📤 Tout importer</button>
+        <button class="btn btn-sync" id="syncAllBtn" onclick="syncAllPricesStock()">🔄 Sync Prix & Stock</button>
         <button class="btn btn-get" id="getProductsBtn" onclick="loadShopifyProducts()">📦 Récupérer les produits</button>
         <button class="btn btn-refresh" id="refreshBtn" onclick="refreshStatus()">🔄 Rafraîchir</button>
         <button class="btn btn-danger" id="clearBtn" onclick="clearAll()">🗑️ Tout effacer</button>
@@ -1037,10 +1038,14 @@
       }
     }
 
-    function updateProgress(current, total) {
-      var percent = Math.round((current / total) * 100);
-      document.getElementById('progressFill').style.width = percent + '%';
-      document.getElementById('progressText').textContent = 'Traitement ' + current + '/' + total + '...';
+    function updateProgress(current, total, label) {
+      var percent = total > 0 ? Math.round((current / total) * 100) : 0;
+      var fill = document.getElementById('progressFill');
+      var textEl = document.getElementById('progressText');
+      if (fill) fill.style.width = percent + '%';
+      var msg = current + '/' + total;
+      if (label) msg += ' — ' + label;
+      if (textEl) textEl.textContent = msg;
     }
 
     // =============================================
@@ -1343,6 +1348,7 @@
           ${imagesHtml ? '<div class="product-images-preview">' + imagesHtml + '</div>' : ''}
           <div class="product-actions">
             <button class="btn-sm btn-sm-upload" onclick="uploadSingle(${index})" id="uploadBtn_${index}" ${uploadDisabled}>${uploadText}</button>
+            ${section === 'shopify' ? `<button class="btn-sm btn-sm-sync" onclick="syncShopifyProduct(${index})" id="syncShopifyBtn_${index}">🔄 Sync</button>` : ''}
             <span style="margin-left:auto;">${statusBadge}</span>
           </div>
         </div>
@@ -1370,6 +1376,9 @@
         var response = await fetch('/api/shopify-products');
         var data = await response.json();
 
+        if (data.success) {
+          window.allShopifyProducts = data.products || [];
+        }
         if (data.success && data.products.length > 0) {
           // Add products to the local array
           var existingIdentifiers = new Set();
@@ -1479,8 +1488,8 @@
         return;
       }
 
-      if (urls.length > 10) {
-        await showPopup('Erreur', '❌ Maximum 10 produits autorisés. Vous avez entré ' + urls.length, '❌', 'error');
+      if (urls.length > 50) {
+        await showPopup('Erreur', '❌ Maximum 50 produits autorisés. Vous avez entré ' + urls.length, '❌', 'error');
         return;
       }
 
@@ -1851,6 +1860,151 @@
     // =============================================
     // AUTO-LOAD ON PAGE LOAD
     // =============================================
+    
+    // =============================================
+    // SYNC ALL - prix + stock (tous les produits Shopify)
+    // =============================================
+    async function syncAllPricesStock() {
+      var confirmed = confirm(
+        '🔄 Synchroniser TOUS les produits Shopify par SKU ?\n\n' +
+        'Le travail tourne SUR LE SERVEUR (pas sur le téléphone).\n' +
+        'Tu peux laisser l\'écran allumé ou revenir plus tard —\n' +
+        'la progression continue côté serveur.\n\n' +
+        'Ne change PAS titre / description / photos.\n\n' +
+        'Continuer ?'
+      );
+      if (!confirmed) return;
+
+      var btn = document.getElementById('syncAllBtn');
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = '⏳ Démarrage...';
+      }
+
+      try {
+        var startRes = await fetch('/api/sync-all-start', { method: 'POST' });
+        var startData = await startRes.json();
+        if (!startData.success && !startData.alreadyRunning) {
+          throw new Error(startData.message || 'Impossible de démarrer');
+        }
+
+        showProgress(true, 'Sync serveur en cours...');
+        // Garde l'écran actif si possible (mobile)
+        var wakeLock = null;
+        try {
+          if (navigator.wakeLock && navigator.wakeLock.request) {
+            wakeLock = await navigator.wakeLock.request('screen');
+          }
+        } catch (_) {}
+
+        // Poll toutes les 2s jusqu'à la fin
+        var done = false;
+        while (!done) {
+          await new Promise(function(r) { setTimeout(r, 2000); });
+          var stRes = await fetch('/api/sync-all-status');
+          var st = await stRes.json();
+          var job = st.job || {};
+
+          var cur = job.current || 0;
+          var tot = job.total || 0;
+          var title = job.title || '';
+          if (typeof updateProgress === 'function') {
+            updateProgress(cur, tot || 1, title);
+          }
+          if (btn) {
+            btn.textContent = tot ? ('⏳ ' + cur + '/' + tot) : '⏳ Sync...';
+          }
+
+          if (!job.running) {
+            done = true;
+            var msg = '🔄 <strong>Sync terminée</strong><br><br>';
+            msg += '✅ Synchronisés: <strong>' + (job.syncedCount || 0) + '</strong><br>';
+            msg += '❌ Erreurs: <strong>' + (job.errorCount || 0) + '</strong><br>';
+            msg += '⏭️ Ignorés: <strong>' + (job.skippedCount || 0) + '</strong><br>';
+            msg += '📦 Total: <strong>' + (job.total || 0) + '</strong>';
+            if (job.message) msg += '<br><br><span style="color:#666">' + job.message + '</span>';
+
+            var errors = job.errors || [];
+            if (errors.length > 0) {
+              msg += '<br><br><div style="text-align:left;max-height:220px;overflow:auto;background:#fff5f5;padding:10px;border-radius:8px;">';
+              msg += '<strong>❌ Erreurs:</strong><ul style="margin:8px 0 0 18px;padding:0;">';
+              errors.forEach(function(e) {
+                msg += '<li style="margin-bottom:6px;"><strong>' + (e.title || '?') + '</strong>';
+                if (e.reference) msg += ' <code>' + e.reference + '</code>';
+                msg += '<br><span style="color:#c62828;font-size:13px;">' + (e.reason || '') + '</span></li>';
+              });
+              msg += '</ul></div>';
+            }
+
+            await showPopup(
+              'Résumé Sync',
+              msg,
+              (job.errorCount || 0) === 0 ? '✅' : '⚠️',
+              (job.errorCount || 0) === 0 ? 'success' : 'warning'
+            );
+          }
+        }
+
+        try { if (wakeLock) await wakeLock.release(); } catch (_) {}
+      } catch (err) {
+        await showPopup('Erreur', '❌ ' + err.message, '❌', 'error');
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = '🔄 Sync Prix & Stock';
+        }
+        showProgress(false);
+      }
+    }
+
+    async function syncShopifyProduct(index) {
+      var product = (typeof products !== 'undefined' ? products : [])[index];
+      if (!product) {
+        product = (window.allShopifyProducts || [])[index];
+      }
+      if (!product) {
+        await showPopup('Erreur', '❌ Produit introuvable', '❌', 'error');
+        return;
+      }
+      var id = product.shopifyId || product.id;
+      if (!id) {
+        await showPopup('Erreur', '❌ Pas d\'ID Shopify sur ce produit', '❌', 'error');
+        return;
+      }
+      var btn = document.getElementById('syncShopifyBtn_' + index);
+      if (btn) { btn.disabled = true; btn.textContent = '⏳...'; }
+      showProgress(true, '1/1 — ' + (product.title || ''));
+      try {
+        var res = await fetch('/api/sync-one', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ shopifyProductId: id })
+        });
+        var data = await res.json();
+        if (data.success) {
+          var r = data.report || {};
+          await showPopup(
+            'Synchronisé',
+            '✅ <strong>' + (data.title || product.title) + '</strong><br><br>' +
+            'Prix: ' + (r.sellingPrice || '?') + ' DA<br>' +
+            'Coût: ' + (r.costPrice || '?') + ' DA<br>' +
+            'Tailles matchées: ' + (r.variantsMatched || 0),
+            '✅', 'success'
+          );
+        } else if (data.skipped) {
+          await showPopup('Ignoré', '⏭️ ' + (data.message || ''), '⏭️', 'warning');
+        } else {
+          await showPopup('Erreur', '❌ ' + (data.message || 'Échec'), '❌', 'error');
+        }
+      } catch (err) {
+        await showPopup('Erreur', '❌ ' + err.message, '❌', 'error');
+      } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '🔄 Sync'; }
+        showProgress(false);
+      }
+    }
+
+
     window.onload = function() {
       autoLoadProducts();
     };

@@ -6,24 +6,20 @@ const logger = require('../utils/logger');
 class ShopifyClient {
   constructor() {
     const storeUrl = process.env.SHOPIFY_STORE_URL;
-    let apiVersion = process.env.SHOPIFY_API_VERSION || '2024-01';
-    if (apiVersion.startsWith('2026')) {
-      logger.warn(`⚠️ Version API ${apiVersion} instable. Utilisation de 2024-01.`);
-      apiVersion = '2024-01';
-    }
-    
+    const apiVersion = process.env.SHOPIFY_API_VERSION || '2024-07';
+
     let shopifyStore = storeUrl;
     if (!storeUrl.includes('.myshopify.com') && !storeUrl.includes('.')) {
       shopifyStore = `${storeUrl}.myshopify.com`;
     }
-    
+
     this.baseUrl = `https://${shopifyStore}/admin/api/${apiVersion}`;
-    this.graphqlUrl = `https://${shopifyStore}/admin/api/${apiVersion}/graphql.json`; // ✅ GraphQL endpoint
+    this.graphqlUrl = `https://${shopifyStore}/admin/api/${apiVersion}/graphql.json`;
     this.headers = {
       'X-Shopify-Access-Token': process.env.SHOPIFY_ADMIN_TOKEN,
       'Content-Type': 'application/json',
     };
-    
+
     logger.info(`🔧 Shopify config: Store=${shopifyStore}, API=${apiVersion}`);
   }
 
@@ -44,42 +40,136 @@ class ShopifyClient {
         }
         if (attempt === maxRetries) throw error;
         const delayMs = baseDelay * Math.pow(2, attempt - 1);
-        logger.warn(`⚠️ Tentative ${attempt}/${maxRetries} échouée, réessai dans ${delayMs}ms...`);
+        logger.warn(`⚠️ Retry ${attempt}/${maxRetries} failed, waiting ${delayMs}ms...`);
         await this.delay(delayMs);
       }
     }
   }
 
   // =============================================
-  // PUBLIER SUR TOUS LES CANAUX (GraphQL)
+  // EXTRACT NEXT PAGE URL FROM LINK HEADER
   // =============================================
+  getNextPageUrl(linkHeader) {
+    if (!linkHeader) {
+      return null;
+    }
+
+    const linkPattern = /<([^>]+)>;\s*rel="([^"]+)"/g;
+    let match;
+    const links = {};
+
+    while ((match = linkPattern.exec(linkHeader)) !== null) {
+      const url = match[1];
+      const rel = match[2];
+      links[rel] = url;
+    }
+
+    return links.next || null;
+  }
+
+  // =============================================
+  // GET ALL PRODUCTS - WITH LINK HEADER PAGINATION
+  // =============================================
+  async getAllProducts(limit = 250) {
+    try {
+      let allProducts = [];
+      let pageCount = 0;
+      const pageSize = Math.min(limit, 250);
+      // Newest first (same as Shopify admin: new → old)
+      let nextUrl = `${this.baseUrl}/products.json?limit=${pageSize}&order=created_at+desc`;
+
+      while (nextUrl) {
+        pageCount++;
+        logger.info(`📄 Fetching page ${pageCount} of Shopify products...`);
+
+        const response = await this.retryRequest(async () => {
+          return await axios.get(nextUrl, { headers: this.headers });
+        });
+
+        const products = response.data.products || [];
+        
+        if (products.length === 0) {
+          logger.warn(`⚠️ Page ${pageCount} returned 0 products, stopping pagination`);
+          break;
+        }
+
+        allProducts = allProducts.concat(products);
+        logger.info(`✅ Page ${pageCount}: ${products.length} products (total: ${allProducts.length})`);
+
+        const linkHeader = response.headers.link;
+        nextUrl = this.getNextPageUrl(linkHeader);
+
+        if (nextUrl) {
+          logger.info(`🔄 Next page URL found, continuing...`);
+          await this.delay(200);
+        }
+      }
+
+      // Safety sort: newest first (created_at desc, then id desc)
+      allProducts.sort((a, b) => {
+        const da = new Date(a.created_at || 0).getTime();
+        const db = new Date(b.created_at || 0).getTime();
+        if (db !== da) return db - da;
+        return Number(b.id || 0) - Number(a.id || 0);
+      });
+
+      logger.info(`📦 ${allProducts.length} total products fetched from Shopify (${pageCount} pages) — newest first`);
+
+      const activeCount = allProducts.filter(p => p.status === 'active' || p.published_status === 'published').length;
+      const draftCount = allProducts.filter(p => p.status === 'draft' || p.published_status === 'unpublished').length;
+      const archivedCount = allProducts.filter(p => p.status === 'archived').length;
+      
+      logger.info(`   ✅ Active: ${activeCount}`);
+      logger.info(`   📝 Draft: ${draftCount}`);
+      logger.info(`   📦 Archived: ${archivedCount}`);
+
+      allProducts.forEach(p => {
+        if (p.status === 'active' || p.published_status === 'published') {
+          p.display_status = 'active';
+        } else if (p.status === 'draft' || p.published_status === 'unpublished') {
+          p.display_status = 'draft';
+        } else if (p.status === 'archived') {
+          p.display_status = 'archived';
+        } else {
+          p.display_status = p.status || 'unknown';
+        }
+      });
+
+      return allProducts;
+    } catch (error) {
+      this.logApiError(error, 'getAllProducts');
+      return [];
+    }
+  }
+
   async publishToAllChannels(productId) {
     try {
-      logger.info("📢 Publication du produit sur tous les canaux de vente...");
+      logger.info('📢 Publishing product to all sales channels...');
 
-      // Récupérer la liste de toutes les publications (canaux)
-      const publicationsResponse = await axios.post(
-        this.graphqlUrl,
-        {
-          query: `
-            query {
-              publications(first: 100) {
-                nodes {
-                  id
-                  name
+      const publicationsResponse = await this.retryRequest(async () => {
+        return await axios.post(
+          this.graphqlUrl,
+          {
+            query: `
+              query {
+                publications(first: 100) {
+                  nodes {
+                    id
+                    name
+                  }
                 }
               }
-            }
-          `
-        },
-        { headers: this.headers }
-      );
+            `
+          },
+          { headers: this.headers }
+        );
+      });
 
-      const publications = publicationsResponse.data.data?.publications?.nodes || [];
-      logger.info(`📡 ${publications.length} publications trouvées`);
+      const publications = publicationsResponse.data?.data?.publications?.nodes || [];
+      logger.info(`📡 Found ${publications.length} publications`);
 
       if (publications.length === 0) {
-        logger.warn("⚠️ Aucune publication trouvée. Vérifiez vos canaux de vente.");
+        logger.warn('⚠️ No publications found. Check your sales channels.');
         return;
       }
 
@@ -87,55 +177,54 @@ class ShopifyClient {
 
       for (const pub of publications) {
         try {
-          logger.info(`📤 Publication sur ${pub.name} (${pub.id})`);
+          logger.info(`📤 Publishing to ${pub.name} (${pub.id})`);
 
-          const publishResponse = await axios.post(
-            this.graphqlUrl,
-            {
-              query: `
-                mutation Publish($id: ID!, $publicationId: ID!) {
-                  publishablePublish(
-                    id: $id
-                    input: [{publicationId: $publicationId}]
-                  ) {
-                    userErrors {
-                      field
-                      message
+          const publishResponse = await this.retryRequest(async () => {
+            return await axios.post(
+              this.graphqlUrl,
+              {
+                query: `
+                  mutation Publish($id: ID!, $publicationId: ID!) {
+                    publishablePublish(
+                      id: $id
+                      input: [{publicationId: $publicationId}]
+                    ) {
+                      userErrors {
+                        field
+                        message
+                      }
                     }
                   }
+                `,
+                variables: {
+                  id: productGid,
+                  publicationId: pub.id
                 }
-              `,
-              variables: {
-                id: productGid,
-                publicationId: pub.id
-              }
-            },
-            { headers: this.headers }
-          );
+              },
+              { headers: this.headers }
+            );
+          });
 
           const errors = publishResponse.data?.data?.publishablePublish?.userErrors || [];
           if (errors.length > 0) {
-            logger.warn(`⚠️ Erreurs lors de la publication sur ${pub.name}:`, errors);
+            logger.warn(`⚠️ Errors publishing to ${pub.name}:`, errors);
           } else {
-            logger.info(`✅ Publié sur ${pub.name}`);
+            logger.info(`✅ Published to ${pub.name}`);
           }
         } catch (e) {
-          logger.warn(`⚠️ Impossible de publier sur ${pub.name}: ${e.message}`);
+          logger.warn(`⚠️ Could not publish to ${pub.name}: ${e.message}`);
         }
       }
 
-      logger.info("🎉 Publication terminée sur tous les canaux.");
+      logger.info('🎉 Publication completed for all channels.');
     } catch (error) {
-      logger.error("❌ Échec de la publication GraphQL:", error.response?.data || error.message);
+      logger.error('❌ GraphQL publication failed:', error.response?.data || error.message);
     }
   }
 
-  // =============================================
-  // CRÉER UN PRODUIT
-  // =============================================
   async createProduct(productData) {
     try {
-      logger.info(`🛍️ Création du produit dans Shopify: ${productData.title}`);
+      logger.info(`🛍️ Creating product in Shopify: ${productData.title}`);
 
       const formattedTitle = productData.reference
         ? `${productData.title} - ${productData.reference}`
@@ -143,7 +232,7 @@ class ShopifyClient {
 
       const sizes = productData.sizes || productData.variants || [];
       let variants = [];
-      
+
       if (sizes.length > 0) {
         variants = sizes.map((size, index) => ({
           option1: size.size || size.value || 'Default',
@@ -154,7 +243,7 @@ class ShopifyClient {
           inventory_policy: 'deny',
           fulfillment_service: 'manual',
           requires_shipping: true,
-          taxable: true,
+          taxable: false,
           position: index + 1,
           cost: (productData.costPrice || 0).toFixed(2)
         }));
@@ -167,7 +256,7 @@ class ShopifyClient {
           inventory_policy: 'deny',
           fulfillment_service: 'manual',
           requires_shipping: true,
-          taxable: true,
+          taxable: false,
           cost: (productData.costPrice || 0).toFixed(2)
         }];
       }
@@ -184,7 +273,7 @@ class ShopifyClient {
         const uniqueValues = [...new Set(optionValues)];
         if (uniqueValues.length > 0) {
           options.push({
-            name: 'Taille',
+            name: 'Size',
             values: uniqueValues
           });
         }
@@ -195,7 +284,7 @@ class ShopifyClient {
           title: formattedTitle,
           body_html: '',
           vendor: 'Signateur Confort',
-          product_type: '',
+          product_type: this.determineProductType(productData.title || ''),
           variants: variants,
           options: options,
           images: images,
@@ -231,11 +320,8 @@ class ShopifyClient {
       });
 
       const createdProduct = response.data.product;
-      logger.info(`✅ Produit créé: ${createdProduct.title} (ID: ${createdProduct.id})`);
-      logger.info(`   🏷️  Fournisseur: Signateur Confort`);
-      logger.info(`   📢 Publié sur tous les canaux (global)`);
+      logger.info(`✅ Created product: ${createdProduct.title} (ID: ${createdProduct.id})`);
 
-      // ✅ Forcer la publication sur tous les canaux via GraphQL
       await this.publishToAllChannels(createdProduct.id);
 
       return createdProduct;
@@ -246,14 +332,11 @@ class ShopifyClient {
     }
   }
 
-  // =============================================
-  // METTRE À JOUR UN PRODUIT
-  // =============================================
   async updateProduct(productId, productData) {
     try {
       let variants = productData.variants || productData.sizes || [];
       if (variants.length === 0) {
-        logger.warn(`⚠️ Aucune variante fournie pour le produit ${productId}, conservation des variantes existantes`);
+        logger.warn(`⚠️ No variants provided for product ${productId}, keeping existing variants`);
         const existingProduct = await this.getProduct(productId);
         if (existingProduct && existingProduct.variants && existingProduct.variants.length > 0) {
           variants = existingProduct.variants.map(v => ({
@@ -267,10 +350,10 @@ class ShopifyClient {
             inventory_policy: v.inventory_policy || 'deny',
             fulfillment_service: v.fulfillment_service || 'manual',
             requires_shipping: true,
-            taxable: true,
+            taxable: false,
             position: v.position || 1,
           }));
-          logger.info(`✅ Conservation de ${variants.length} variantes existantes`);
+          logger.info(`✅ Keeping ${variants.length} existing variants`);
         } else {
           variants = [{
             option1: 'Default',
@@ -282,10 +365,10 @@ class ShopifyClient {
             inventory_policy: 'deny',
             fulfillment_service: 'manual',
             requires_shipping: true,
-            taxable: true,
+            taxable: false,
             position: 1,
           }];
-          logger.info(`✅ Création d'une variante par défaut`);
+          logger.info(`✅ Created default variant`);
         }
       } else {
         variants = variants.map((v, index) => ({
@@ -299,7 +382,7 @@ class ShopifyClient {
           inventory_policy: 'deny',
           fulfillment_service: 'manual',
           requires_shipping: true,
-          taxable: true,
+          taxable: false,
           position: index + 1,
         }));
       }
@@ -314,13 +397,14 @@ class ShopifyClient {
           title: formattedTitle,
           body_html: productData.description || '',
           vendor: 'Signateur Confort',
-          product_type: '',
+          product_type: this.determineProductType(productData.title || ''),
           variants: variants,
           images: (productData.images || []).map((img, index) => ({
             src: img,
             position: index + 1,
           })),
-          published_scope: 'global'
+          published_scope: 'global',
+          status: 'active'
         }
       };
 
@@ -332,9 +416,8 @@ class ShopifyClient {
         );
       });
 
-      logger.info(`✅ Produit mis à jour: ${formattedTitle}`);
+      logger.info(`✅ Updated product: ${formattedTitle}`);
 
-      // ✅ Forcer la publication sur tous les canaux via GraphQL
       await this.publishToAllChannels(productId);
 
       return response.data.product;
@@ -345,9 +428,6 @@ class ShopifyClient {
     }
   }
 
-  // =============================================
-  // RÉCUPÉRER UN PRODUIT PAR ID
-  // =============================================
   async getProduct(productId) {
     try {
       const response = await this.retryRequest(async () => {
@@ -363,9 +443,6 @@ class ShopifyClient {
     }
   }
 
-  // =============================================
-  // RÉCUPÉRER UN PRODUIT PAR SKU
-  // =============================================
   async getProductBySku(sku) {
     try {
       const products = await this.getAllProducts(250);
@@ -385,102 +462,6 @@ class ShopifyClient {
     }
   }
 
-  // =============================================
-  // RÉCUPÉRER TOUS LES PRODUITS (avec pagination)
-  // =============================================
-  async getAllProducts(limit = 250) {
-    try {
-      let allProducts = [];
-      let sinceId = 0;
-      let hasMore = true;
-      let pageCount = 0;
-      const pageSize = Math.min(limit, 250);
-      
-      while (hasMore) {
-        pageCount++;
-        let url = `${this.baseUrl}/products.json?limit=${pageSize}&status=any`;
-        if (sinceId > 0) {
-          url += `&since_id=${sinceId}`;
-        }
-        
-        logger.info(`📄 Récupération de la page ${pageCount} des produits Shopify...`);
-        
-        const response = await this.retryRequest(async () => {
-          return await axios.get(url, { headers: this.headers });
-        });
-        
-        const products = response.data.products || [];
-        if (products.length === 0) {
-          // Fallback sans status=any
-          if (pageCount === 1) {
-            logger.warn('⚠️ status=any ne fonctionne pas, on réessaie sans...');
-            const fallbackRes = await this.retryRequest(async () => {
-              return await axios.get(
-                `${this.baseUrl}/products.json?limit=${pageSize}`,
-                { headers: this.headers }
-              );
-            });
-            const fallbackProducts = fallbackRes.data.products || [];
-            if (fallbackProducts.length === 0) {
-              hasMore = false;
-            } else {
-              allProducts = allProducts.concat(fallbackProducts);
-              const last = fallbackProducts[fallbackProducts.length - 1];
-              sinceId = last.id;
-              logger.info(`✅ Page 1 (sans status=any): ${fallbackProducts.length} produits récupérés (total: ${allProducts.length})`);
-              if (fallbackProducts.length < pageSize) {
-                hasMore = false;
-              }
-              while (hasMore) {
-                pageCount++;
-                const nextUrl = `${this.baseUrl}/products.json?limit=${pageSize}&since_id=${sinceId}`;
-                const nextRes = await this.retryRequest(async () => {
-                  return await axios.get(nextUrl, { headers: this.headers });
-                });
-                const nextProducts = nextRes.data.products || [];
-                if (nextProducts.length === 0) {
-                  hasMore = false;
-                } else {
-                  allProducts = allProducts.concat(nextProducts);
-                  const last2 = nextProducts[nextProducts.length - 1];
-                  sinceId = last2.id;
-                  logger.info(`✅ Page ${pageCount}: ${nextProducts.length} produits récupérés (total: ${allProducts.length})`);
-                  if (nextProducts.length < pageSize) {
-                    hasMore = false;
-                  }
-                  await this.delay(200);
-                }
-              }
-              break;
-            }
-          } else {
-            hasMore = false;
-          }
-        } else {
-          allProducts = allProducts.concat(products);
-          const lastProduct = products[products.length - 1];
-          sinceId = lastProduct.id;
-          logger.info(`✅ Page ${pageCount}: ${products.length} produits récupérés (total: ${allProducts.length})`);
-          if (products.length < pageSize) {
-            hasMore = false;
-          }
-          if (hasMore) {
-            await this.delay(200);
-          }
-        }
-      }
-      
-      logger.info(`📦 ${allProducts.length} produits récupérés depuis Shopify (${pageCount} pages)`);
-      return allProducts;
-    } catch (error) {
-      this.logApiError(error, 'getAllProducts');
-      return [];
-    }
-  }
-
-  // =============================================
-  // METTRE À JOUR L'INVENTAIRE D'UNE VARIANTE
-  // =============================================
   async updateInventory(variantId, quantity) {
     try {
       const variantResponse = await this.retryRequest(async () => {
@@ -489,20 +470,19 @@ class ShopifyClient {
           { headers: this.headers }
         );
       });
-      
+
       const inventoryItemId = variantResponse.data.variant.inventory_item_id;
-      
+
       const locationsResponse = await this.retryRequest(async () => {
         return await axios.get(
           `${this.baseUrl}/locations.json`,
           { headers: this.headers }
         );
       });
-      
+
       const locationId = locationsResponse.data.locations[0]?.id;
-      
       if (!locationId) {
-        throw new Error('Aucun emplacement trouvé');
+        throw new Error('No location found');
       }
 
       const safeQuantity = Math.max(0, quantity);
@@ -519,7 +499,7 @@ class ShopifyClient {
         );
       });
 
-      logger.info(`✅ Inventaire mis à jour: ${safeQuantity} unités`);
+      logger.info(`✅ Updated inventory: ${safeQuantity} units`);
       return response.data.inventory_level;
 
     } catch (error) {
@@ -529,27 +509,779 @@ class ShopifyClient {
   }
 
   // =============================================
-  // AFFICHER LES ERREURS API
+  // SIZE NORMALIZATION (Kimland 2XL = Shopify XXL)
   // =============================================
+  normalizeSize(size) {
+    if (!size) return '';
+    let s = String(size).trim().toLowerCase().replace(/\s+/g, '');
+    s = s.replace(/[_]/g, '');
+
+    const aliases = {
+      // 2XL = XXL (same size)
+      '2xl': 'xxl', 'xxl': 'xxl', 'xxlarge': 'xxl', '2x': 'xxl',
+      // 3XL = XXXL
+      '3xl': 'xxxl', 'xxxl': 'xxxl', '3x': 'xxxl',
+      '4xl': 'xxxxl', 'xxxxl': 'xxxxl', '4x': 'xxxxl',
+      '5xl': 'xxxxxl', 'xxxxxl': 'xxxxxl',
+      // extra small
+      '2xs': 'xxs', 'xxs': 'xxs', 'xxsmall': 'xxs',
+      '3xs': 'xxxs', 'xxxs': 'xxxs',
+      // standard
+      'xs': 'xs', 'xsmall': 'xs', 'extra-small': 'xs', 'extrasmall': 'xs',
+      's': 's', 'small': 's',
+      'm': 'm', 'medium': 'm', 'med': 'm',
+      'l': 'l', 'large': 'l',
+      'xl': 'xl', 'xlarge': 'xl', 'extra-large': 'xl', 'extralarge': 'xl',
+      // one size
+      'unique': 'unique', 'onesize': 'unique', 'one-size': 'unique', 'os': 'unique',
+      'standard': 'standard', 'tu': 'unique', 'u': 'unique'
+    };
+
+    if (aliases[s]) return aliases[s];
+    return s;
+  }
+
+  // Preferred label on Shopify (always XXL not 2XL)
+  toShopifySizeLabel(kimlandValue) {
+    const norm = this.normalizeSize(kimlandValue);
+    const preferred = {
+      xxl: 'XXL',
+      xxxl: 'XXXL',
+      xxxxl: 'XXXXL',
+      xxxxxl: 'XXXXXL',
+      xxs: 'XXS',
+      xxxs: 'XXXS',
+      xs: 'XS',
+      s: 'S',
+      m: 'M',
+      l: 'L',
+      xl: 'XL'
+    };
+    if (preferred[norm]) return preferred[norm];
+    // numeric / other (40.5, 42, Standard...) keep Kimland text
+    return String(kimlandValue || '').trim();
+  }
+
+  // Find Kimland size entry that matches a Shopify option1 (2XL = XXL)
+  matchKimlandSize(shopifyOption, kimlandSizeMap) {
+    const key = this.normalizeSize(shopifyOption);
+    for (const [k, v] of kimlandSizeMap) {
+      if (this.normalizeSize(k) === key || this.normalizeSize(v.value) === key) return v;
+    }
+    return null;
+  }
+
+  // =============================================
+  // FULL REPAIR PRODUCT
+  // Kimland = source of truth for sizes/stock/price/sku
+  // =============================================
+  async repairProduct(shopifyProductId, kimlandData) {
+    try {
+      logger.info(`🛠️ Starting FULL REPAIR for Shopify product #${shopifyProductId}`);
+
+      const existing = await this.getProduct(shopifyProductId);
+      if (!existing) {
+        throw new Error(`Shopify product ${shopifyProductId} not found`);
+      }
+
+      const kimlandVariants = kimlandData.variants || kimlandData.sizes || [];
+      const kimlandImages = kimlandData.images || [];
+      const sellingPrice = (kimlandData.price || 0).toFixed(2);
+      const costPrice = (kimlandData.costPrice || 0).toFixed(2);
+      const reference = kimlandData.reference || '';
+
+      // Kimland sizes (keep original label as display value)
+      const kimlandSizeMap = new Map(); // normalizedKey -> { value: original, quantity }
+      for (const v of kimlandVariants) {
+        const original = String(v.value || v.size || '').trim();
+        if (!original) continue;
+        const norm = this.normalizeSize(original);
+        kimlandSizeMap.set(norm, {
+          value: original, // Kimland label wins (e.g. 2XL)
+          quantity: Math.max(0, v.quantity || 0),
+          norm
+        });
+      }
+
+      const existingVariants = existing.variants || [];
+      logger.info(`📏 Kimland sizes: ${[...kimlandSizeMap.values()].map(v => v.value + ':' + v.quantity).join(', ')}`);
+      logger.info(`📏 Shopify sizes: ${existingVariants.map(v => v.option1).join(', ')}`);
+
+      // --------------------------------------------------
+      // STEP 1: Title / status (no options)
+      // --------------------------------------------------
+      const formattedTitle = reference
+        ? `${kimlandData.title} - ${reference}`
+        : (kimlandData.title || existing.title);
+
+      try {
+        await this.retryRequest(async () => {
+          return await axios.put(
+            `${this.baseUrl}/products/${shopifyProductId}.json`,
+            {
+              product: {
+                id: shopifyProductId,
+                title: formattedTitle,
+                body_html: kimlandData.description || existing.body_html || '',
+                vendor: existing.vendor || 'Signateur Confort',
+                product_type: this.determineProductType(kimlandData.title || existing.title || ''),
+                status: 'active',
+                published_scope: 'global'
+              }
+            },
+            { headers: this.headers }
+          );
+        });
+        logger.info(`✅ Title/status updated: ${formattedTitle}`);
+      } catch (e) {
+        logger.warn(`⚠️ Title update failed (continuing): ${e.message}`);
+      }
+
+      // --------------------------------------------------
+      // STEP 2: Match Shopify variants ↔ Kimland (aliases)
+      // Try to RENAME option1 to Kimland label (2XL not XXL)
+      // If metafield blocks rename → keep name, still sync stock
+      // --------------------------------------------------
+      const inventoryResults = [];
+      const usedKimNorm = new Set();
+      let updatedCount = 0;
+      let renamedCount = 0;
+      let matchedCount = 0;
+
+      for (const sv of existingVariants) {
+        const kim = this.matchKimlandSize(sv.option1, kimlandSizeMap);
+        const shopifyLabel = String(sv.option1 || '').trim();
+
+        if (kim) {
+          matchedCount++;
+          usedKimNorm.add(kim.norm);
+
+          // Prefer Kimland label on Shopify
+          // 2XL (Kimland) = XXL (Shopify) — prefer Shopify-style label XXL
+          const desiredLabel = this.toShopifySizeLabel(kim.value);
+          // Only rename for case fixes (Xl→XL), NEVER force 2XL over XXL
+          // If already same size via alias (XXL ↔ 2XL), keep Shopify name
+          const sameByAlias = this.normalizeSize(shopifyLabel) === this.normalizeSize(kim.value);
+          const needsRename = sameByAlias
+            && shopifyLabel.toLowerCase() !== desiredLabel.toLowerCase()
+            && this.normalizeSize(shopifyLabel) !== 'xxl'; // keep XXL as-is when Kimland says 2XL
+
+          // Update variant: price, sku, barcode, optionally option1
+          const variantBody = {
+            id: sv.id,
+            price: sellingPrice,
+            sku: reference || sv.sku || '',
+            barcode: reference || sv.barcode || '',
+            inventory_management: 'shopify',
+            inventory_policy: 'deny'
+          };
+
+          if (needsRename) {
+            variantBody.option1 = desiredLabel;
+          }
+
+          let renameOk = true;
+          try {
+            await this.retryRequest(async () => {
+              return await axios.put(
+                `${this.baseUrl}/variants/${sv.id}.json`,
+                { variant: variantBody },
+                { headers: this.headers }
+              );
+            });
+            updatedCount++;
+            if (needsRename) {
+              renamedCount++;
+              logger.info(`✅ Variant ${shopifyLabel} → renamed to "${desiredLabel}" + SKU/price set`);
+            } else {
+              logger.info(`✅ Variant ${shopifyLabel} → SKU=${reference || '(keep)'} price=${sellingPrice}`);
+            }
+          } catch (ve) {
+            const errData = ve.response?.data ? JSON.stringify(ve.response.data) : ve.message;
+            // If rename failed (metafield), retry WITHOUT option1 change
+            if (needsRename) {
+              logger.warn(`⚠️ Rename ${shopifyLabel}→${desiredLabel} blocked, retry without rename: ${errData}`);
+              renameOk = false;
+              try {
+                await this.retryRequest(async () => {
+                  return await axios.put(
+                    `${this.baseUrl}/variants/${sv.id}.json`,
+                    {
+                      variant: {
+                        id: sv.id,
+                        price: sellingPrice,
+                        sku: reference || sv.sku || '',
+                        barcode: reference || sv.barcode || '',
+                        inventory_management: 'shopify',
+                        inventory_policy: 'deny'
+                      }
+                    },
+                    { headers: this.headers }
+                  );
+                });
+                updatedCount++;
+                logger.info(`✅ Variant ${shopifyLabel} updated (kept name, stock will use Kimland ${kim.value})`);
+              } catch (ve2) {
+                logger.warn(`⚠️ Variant update failed for ${shopifyLabel}: ${ve2.message}`);
+              }
+            } else {
+              logger.warn(`⚠️ Variant update failed for ${shopifyLabel}: ${errData}`);
+            }
+          }
+
+          // Cost
+          try {
+            if (sv.inventory_item_id) {
+              await this.retryRequest(async () => {
+                return await axios.put(
+                  `${this.baseUrl}/inventory_items/${sv.inventory_item_id}.json`,
+                  { inventory_item: { id: sv.inventory_item_id, cost: costPrice } },
+                  { headers: this.headers }
+                );
+              });
+            }
+          } catch (ce) {
+            logger.warn(`⚠️ Cost update failed for ${shopifyLabel}: ${ce.message}`);
+          }
+
+          // Inventory from Kimland
+          try {
+            await this.updateInventory(sv.id, kim.quantity);
+            inventoryResults.push({
+              size: renameOk && needsRename ? desiredLabel : shopifyLabel,
+              kimlandSize: kim.value,
+              quantity: kim.quantity,
+              success: true,
+              matched: true,
+              renamed: needsRename && renameOk
+            });
+          } catch (invErr) {
+            inventoryResults.push({
+              size: shopifyLabel,
+              kimlandSize: kim.value,
+              quantity: kim.quantity,
+              success: false,
+              error: invErr.message
+            });
+          }
+        } else {
+          // No Kimland match → set stock 0, still fix SKU/price
+          logger.warn(`⚠️ Shopify size "${shopifyLabel}" has no Kimland match → stock 0`);
+          try {
+            await this.retryRequest(async () => {
+              return await axios.put(
+                `${this.baseUrl}/variants/${sv.id}.json`,
+                {
+                  variant: {
+                    id: sv.id,
+                    price: sellingPrice,
+                    sku: reference || sv.sku || '',
+                    barcode: reference || sv.barcode || '',
+                    inventory_management: 'shopify',
+                    inventory_policy: 'deny'
+                  }
+                },
+                { headers: this.headers }
+              );
+            });
+            updatedCount++;
+          } catch (_) {}
+
+          try {
+            if (sv.inventory_item_id) {
+              await axios.put(
+                `${this.baseUrl}/inventory_items/${sv.inventory_item_id}.json`,
+                { inventory_item: { id: sv.inventory_item_id, cost: costPrice } },
+                { headers: this.headers }
+              ).catch(() => {});
+            }
+          } catch (_) {}
+
+          try {
+            await this.updateInventory(sv.id, 0);
+            inventoryResults.push({ size: shopifyLabel, quantity: 0, success: true, matched: false });
+          } catch (e) {
+            inventoryResults.push({ size: shopifyLabel, quantity: 0, success: false, error: e.message });
+          }
+        }
+      }
+
+      // --------------------------------------------------
+      // STEP 3: ADD Kimland sizes that don't exist on Shopify
+      // (e.g. Kimland has 2XL, Shopify only had L/M/S → add 2XL)
+      // --------------------------------------------------
+      const missingKim = [];
+      for (const [norm, kim] of kimlandSizeMap) {
+        if (!usedKimNorm.has(norm)) missingKim.push(kim);
+      }
+
+      let addedCount = 0;
+      if (missingKim.length > 0 && existingVariants.length > 0) {
+        logger.info(`📦 Adding missing Kimland sizes to Shopify: ${missingKim.map(k => k.value).join(', ')}`);
+
+        // Refresh product (ids may be same)
+        const fresh = await this.getProduct(shopifyProductId);
+        const keepExisting = (fresh.variants || []).map((sv, i) => ({
+          id: sv.id,
+          option1: sv.option1,
+          position: i + 1
+        }));
+
+        const newVars = missingKim.map((kim, i) => ({
+          option1: this.toShopifySizeLabel(kim.value), // 2XL → XXL on Shopify
+          price: sellingPrice,
+          sku: reference || `${kimlandData.kimlandId || 'KIM'}`,
+          barcode: reference || '',
+          inventory_management: 'shopify',
+          inventory_policy: 'deny',
+          fulfillment_service: 'manual',
+          requires_shipping: true,
+          taxable: false,
+          position: keepExisting.length + i + 1
+        }));
+
+        try {
+          const addRes = await this.retryRequest(async () => {
+            return await axios.put(
+              `${this.baseUrl}/products/${shopifyProductId}.json`,
+              {
+                product: {
+                  id: shopifyProductId,
+                  variants: [...keepExisting, ...newVars]
+                  // no options field → avoids metafield rename errors
+                }
+              },
+              { headers: this.headers }
+            );
+          });
+
+          const after = addRes.data.product;
+          const beforeIds = new Set(keepExisting.map(v => v.id));
+          for (const sv of (after.variants || [])) {
+            if (beforeIds.has(sv.id)) continue;
+            addedCount++;
+            const kim = this.matchKimlandSize(sv.option1, kimlandSizeMap);
+            const qty = kim ? kim.quantity : 0;
+            try {
+              if (sv.inventory_item_id) {
+                await axios.put(
+                  `${this.baseUrl}/inventory_items/${sv.inventory_item_id}.json`,
+                  { inventory_item: { id: sv.inventory_item_id, cost: costPrice } },
+                  { headers: this.headers }
+                );
+              }
+            } catch (_) {}
+            try {
+              await this.updateInventory(sv.id, qty);
+              inventoryResults.push({ size: sv.option1, quantity: qty, success: true, matched: true, added: true });
+              logger.info(`✅ Added size ${sv.option1} with stock ${qty}`);
+            } catch (e) {
+              inventoryResults.push({ size: sv.option1, quantity: qty, success: false, added: true, error: e.message });
+            }
+          }
+        } catch (addErr) {
+          const errMsg = addErr.response?.data ? JSON.stringify(addErr.response.data) : addErr.message;
+          logger.warn(`⚠️ Could not add missing sizes: ${errMsg}`);
+        }
+      }
+
+      // --------------------------------------------------
+      // STEP 4: Images
+      // --------------------------------------------------
+      let imagesAdded = 0;
+      const existingImageSrcs = (existing.images || []).map(img => img.src || '');
+      for (const src of kimlandImages) {
+        const alreadyExists = existingImageSrcs.some(existingSrc => {
+          const a = (existingSrc || '').split('/').pop();
+          const b = (src || '').split('/').pop();
+          return a && b && (existingSrc.includes(b) || src.includes(a));
+        });
+        if (alreadyExists) continue;
+        try {
+          await this.retryRequest(async () => {
+            return await axios.post(
+              `${this.baseUrl}/products/${shopifyProductId}/images.json`,
+              { image: { src, alt: formattedTitle } },
+              { headers: this.headers }
+            );
+          });
+          imagesAdded++;
+        } catch (imgErr) {
+          logger.warn(`⚠️ Image add failed: ${imgErr.message}`);
+        }
+      }
+
+      // --------------------------------------------------
+      // STEP 5: Publish
+      // --------------------------------------------------
+      try {
+        await this.publishToAllChannels(shopifyProductId);
+      } catch (e) {
+        logger.warn('Publish after repair failed (non-critical):', e.message);
+      }
+
+      const repaired = await this.getProduct(shopifyProductId);
+
+      const report = {
+        shopifyId: shopifyProductId,
+        title: repaired?.title || formattedTitle,
+        variantsBefore: existingVariants.length,
+        variantsAfter: (repaired?.variants || []).length,
+        variantsUpdated: updatedCount,
+        variantsMatched: matchedCount,
+        variantsRenamed: renamedCount,
+        variantsAdded: addedCount,
+        imagesAdded,
+        imagesTotal: (repaired?.images || []).length,
+        inventoryUpdates: inventoryResults,
+        referenceSet: reference,
+        costPrice,
+        sellingPrice
+      };
+
+      logger.info(`🎉 FULL REPAIR COMPLETE for #${shopifyProductId}`);
+      logger.info(`   Matched: ${matchedCount} | Renamed: ${renamedCount} | Added: ${addedCount}`);
+      logger.info(`   Images added: ${imagesAdded}`);
+      logger.info(`   SKU on all variants: ${reference}`);
+      logger.info(`   Price: ${sellingPrice} DA | Cost: ${costPrice} DA`);
+
+      return { success: true, product: repaired, report };
+
+    } catch (error) {
+      this.logApiError(error, 'repairProduct');
+      throw error;
+    }
+  }
+
+  // =============================================
+  // SYNC PRICE + STOCK ONLY (no title / description / photos)
+  // Option B: also ADD missing sizes from Kimland
+  // =============================================
+  async syncPriceAndStock(shopifyProductId, kimlandData) {
+    try {
+      logger.info(`🔄 SYNC price+stock for Shopify #${shopifyProductId}`);
+
+      // Hard safety: never overwrite Shopify with empty/failed scrape
+      const title = String(kimlandData?.title || '').trim();
+      const price = Number(kimlandData?.price || 0);
+      const variants = kimlandData?.variants || kimlandData?.sizes || [];
+      if (!title || /^not\s*found$/i.test(title) || price <= 0) {
+        throw new Error(
+          `Refusing sync: invalid Kimland data (title="${title}", price=${price}, variants=${variants.length})`
+        );
+      }
+
+      const existing = await this.getProduct(shopifyProductId);
+      if (!existing) throw new Error(`Shopify product ${shopifyProductId} not found`);
+
+      const kimlandVariants = kimlandData.variants || kimlandData.sizes || [];
+      const sellingPrice = (kimlandData.price || 0).toFixed(2);
+      const costPrice = (kimlandData.costPrice || 0).toFixed(2);
+      const reference = kimlandData.reference || '';
+
+      const kimlandSizeMap = new Map();
+      for (const v of kimlandVariants) {
+        const original = String(v.value || v.size || '').trim();
+        if (!original) continue;
+        const norm = this.normalizeSize(original);
+        kimlandSizeMap.set(norm, {
+          value: original,
+          quantity: Math.max(0, v.quantity || 0),
+          norm
+        });
+      }
+
+      const existingVariants = existing.variants || [];
+      const usedKimNorm = new Set();
+      const inventoryResults = [];
+      let updatedCount = 0;
+      let matchedCount = 0;
+      let addedCount = 0;
+
+      // --- Update existing variants (price + cost + stock), do not touch title/images ---
+      for (const sv of existingVariants) {
+        const kim = this.matchKimlandSize(sv.option1, kimlandSizeMap);
+        const shopifyLabel = String(sv.option1 || '').trim();
+
+        try {
+          await this.retryRequest(async () => {
+            return await axios.put(
+              `${this.baseUrl}/variants/${sv.id}.json`,
+              {
+                variant: {
+                  id: sv.id,
+                  price: sellingPrice,
+                  sku: reference || sv.sku || '',
+                  barcode: reference || sv.barcode || '',
+                  inventory_management: 'shopify',
+                  inventory_policy: 'deny'
+                }
+              },
+              { headers: this.headers }
+            );
+          });
+          updatedCount++;
+        } catch (e) {
+          logger.warn(`⚠️ Variant price update failed ${shopifyLabel}: ${e.message}`);
+        }
+
+        try {
+          if (sv.inventory_item_id) {
+            await this.retryRequest(async () => {
+              return await axios.put(
+                `${this.baseUrl}/inventory_items/${sv.inventory_item_id}.json`,
+                { inventory_item: { id: sv.inventory_item_id, cost: costPrice } },
+                { headers: this.headers }
+              );
+            });
+          }
+        } catch (e) {
+          logger.warn(`⚠️ Cost update failed ${shopifyLabel}: ${e.message}`);
+        }
+
+        if (kim) {
+          matchedCount++;
+          usedKimNorm.add(kim.norm);
+          try {
+            await this.updateInventory(sv.id, kim.quantity);
+            inventoryResults.push({ size: shopifyLabel, kimlandSize: kim.value, quantity: kim.quantity, success: true });
+          } catch (e) {
+            inventoryResults.push({ size: shopifyLabel, quantity: kim.quantity, success: false, error: e.message });
+          }
+        } else {
+          // size only on Shopify → set 0 so stock matches Kimland
+          try {
+            await this.updateInventory(sv.id, 0);
+            inventoryResults.push({ size: shopifyLabel, quantity: 0, success: true, matched: false });
+          } catch (e) {
+            inventoryResults.push({ size: shopifyLabel, quantity: 0, success: false, error: e.message });
+          }
+        }
+      }
+
+      // --- Option B: ADD missing Kimland sizes ---
+      const missingKim = [];
+      for (const [norm, kim] of kimlandSizeMap) {
+        if (!usedKimNorm.has(norm)) missingKim.push(kim);
+      }
+
+      if (missingKim.length > 0 && existingVariants.length > 0) {
+        logger.info(`📦 Sync adding missing sizes: ${missingKim.map(k => k.value).join(', ')}`);
+        const fresh = await this.getProduct(shopifyProductId);
+        const keepExisting = (fresh.variants || []).map((sv, i) => ({
+          id: sv.id,
+          option1: sv.option1,
+          position: i + 1
+        }));
+
+        const newVars = missingKim.map((kim, i) => ({
+          option1: this.toShopifySizeLabel(kim.value),
+          price: sellingPrice,
+          sku: reference || `${kimlandData.kimlandId || 'KIM'}`,
+          barcode: reference || '',
+          inventory_management: 'shopify',
+          inventory_policy: 'deny',
+          fulfillment_service: 'manual',
+          requires_shipping: true,
+          taxable: false,
+          position: keepExisting.length + i + 1
+        }));
+
+        try {
+          const addRes = await this.retryRequest(async () => {
+            return await axios.put(
+              `${this.baseUrl}/products/${shopifyProductId}.json`,
+              {
+                product: {
+                  id: shopifyProductId,
+                  variants: [...keepExisting, ...newVars]
+                }
+              },
+              { headers: this.headers }
+            );
+          });
+
+          const after = addRes.data.product;
+          const beforeIds = new Set(keepExisting.map(v => v.id));
+          for (const sv of (after.variants || [])) {
+            if (beforeIds.has(sv.id)) continue;
+            addedCount++;
+            const kim = this.matchKimlandSize(sv.option1, kimlandSizeMap);
+            const qty = kim ? kim.quantity : 0;
+            try {
+              if (sv.inventory_item_id) {
+                await axios.put(
+                  `${this.baseUrl}/inventory_items/${sv.inventory_item_id}.json`,
+                  { inventory_item: { id: sv.inventory_item_id, cost: costPrice } },
+                  { headers: this.headers }
+                );
+              }
+            } catch (_) {}
+            try {
+              await this.updateInventory(sv.id, qty);
+              inventoryResults.push({ size: sv.option1, quantity: qty, success: true, added: true });
+              logger.info(`✅ Added size ${sv.option1} stock=${qty}`);
+            } catch (e) {
+              inventoryResults.push({ size: sv.option1, quantity: qty, success: false, added: true, error: e.message });
+            }
+          }
+        } catch (addErr) {
+          const errMsg = addErr.response?.data ? JSON.stringify(addErr.response.data) : addErr.message;
+          logger.warn(`⚠️ Could not add missing sizes during sync: ${errMsg}`);
+        }
+      }
+
+      const report = {
+        shopifyId: shopifyProductId,
+        title: existing.title,
+        reference,
+        sellingPrice,
+        costPrice,
+        variantsUpdated: updatedCount,
+        variantsMatched: matchedCount,
+        variantsAdded: addedCount,
+        inventoryUpdates: inventoryResults,
+        // title / description / images intentionally NOT changed
+        touchedTitle: false,
+        touchedDescription: false,
+        touchedImages: false
+      };
+
+      logger.info(`🎉 SYNC COMPLETE #${shopifyProductId} | matched=${matchedCount} added=${addedCount} price=${sellingPrice} cost=${costPrice}`);
+      return { success: true, report };
+
+    } catch (error) {
+      this.logApiError(error, 'syncPriceAndStock');
+      throw error;
+    }
+  }
+
+  // Find best matching Shopify product for a Kimland product
+  findBestMatch(kimlandProduct, shopifyProducts) {
+    if (!kimlandProduct || !shopifyProducts || shopifyProducts.length === 0) {
+      return null;
+    }
+
+    const ref = (kimlandProduct.reference || '').toLowerCase().trim();
+    const title = (kimlandProduct.title || '').toLowerCase().trim();
+    const cleanTitle = title.replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+    const titleWords = cleanTitle.split(' ').filter(w => w.length > 2);
+
+    let best = null;
+    let bestScore = 0;
+
+    for (const p of shopifyProducts) {
+      let score = 0;
+      let method = 'none';
+      const pTitle = (p.title || '').toLowerCase();
+      const pTitleClean = pTitle.replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+
+      // 1. Strong SKU / barcode match
+      for (const v of (p.variants || [])) {
+        const sku = (v.sku || '').toLowerCase();
+        const barcode = (v.barcode || '').toLowerCase();
+        if (ref) {
+          if (sku === ref || barcode === ref) {
+            return { product: p, method: 'exact_sku', confidence: 100 };
+          }
+          if (sku.includes(ref) || barcode.includes(ref) || (ref.includes(sku) && sku.length > 3)) {
+            score = Math.max(score, 95);
+            method = 'partial_sku';
+          }
+        }
+      }
+
+      // 2. Reference appears in Shopify title
+      if (ref && pTitle.includes(ref)) {
+        score = Math.max(score, 92);
+        method = 'reference_in_title';
+      }
+
+      // 3. Full title containment
+      if (cleanTitle && pTitleClean) {
+        if (pTitleClean === cleanTitle) {
+          score = Math.max(score, 90);
+          method = 'exact_title';
+        } else if (pTitleClean.includes(cleanTitle) || cleanTitle.includes(pTitleClean)) {
+          score = Math.max(score, 85);
+          method = 'title_contains';
+        }
+      }
+
+      // 4. Word overlap (ADIDAS + MULTIX + H04470)
+      if (titleWords.length > 0) {
+        const pWords = new Set(pTitleClean.split(' ').filter(w => w.length > 2));
+        let common = 0;
+        for (const w of titleWords) {
+          if (pWords.has(w)) common++;
+        }
+        const wordScore = (common / titleWords.length) * 100;
+        if (common >= 2) {
+          const bonusScore = Math.min(88, wordScore + 15);
+          if (bonusScore > score) {
+            score = bonusScore;
+            method = 'word_overlap';
+          }
+        } else if (wordScore > score) {
+          score = wordScore;
+          method = 'word_overlap';
+        }
+      }
+
+      // 5. Product code core match (H04470, G21-000175, etc.)
+      if (ref && ref.length >= 4) {
+        const refCore = ref.replace(/[^a-z0-9]/g, '');
+        if (refCore.length >= 4) {
+          for (const v of (p.variants || [])) {
+            const skuCore = (v.sku || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+            if (skuCore.includes(refCore) || refCore.includes(skuCore)) {
+              score = Math.max(score, 88);
+              method = 'sku_core_match';
+            }
+          }
+          if (pTitle.replace(/[^a-z0-9]/g, '').includes(refCore)) {
+            score = Math.max(score, 86);
+            method = 'ref_in_title_core';
+          }
+        }
+      }
+
+      if (score > bestScore) {
+        bestScore = score;
+        best = { product: p, method, confidence: Math.round(score) };
+      }
+    }
+
+    // Accept from 50% (was too strict at 60/65)
+    if (best && best.confidence >= 50) {
+      return best;
+    }
+    return null;
+  }
+
+  determineProductType(title) {
+    const lower = title.toLowerCase();
+    if (lower.includes('chaussure') || lower.includes('shoe') || lower.includes('pointure')) return 'Shoes';
+    if (lower.includes('robe') || lower.includes('dress')) return 'Dress';
+    if (lower.includes('pantalon') || lower.includes('jeans') || lower.includes('short')) return 'Pants';
+    if (lower.includes('veste') || lower.includes('jacket')) return 'Jacket';
+    if (lower.includes('polo')) return 'Polo';
+    if (lower.includes('t-shirt') || lower.includes('tshirt')) return 'T-Shirt';
+    return 'Clothing';
+  }
+
   logApiError(error, method) {
     if (error.response) {
-      logger.error(`❌ Erreur API Shopify (${method}):`, {
+      logger.error(`❌ Shopify API Error (${method}):`, {
         status: error.response.status,
         statusText: error.response.statusText,
         data: error.response.data
       });
     } else if (error.request) {
-      logger.error(`❌ Erreur réseau (${method}):`, error.message);
+      logger.error(`❌ Network Error (${method}):`, error.message);
     } else {
-      logger.error(`❌ Erreur (${method}):`, error.message);
+      logger.error(`❌ Error (${method}):`, error.message);
     }
-  }
-
-  // =============================================
-  // DÉTERMINER LE TYPE DE PRODUIT (non utilisé)
-  // =============================================
-  determineProductType(title) {
-    return '';
   }
 }
 
