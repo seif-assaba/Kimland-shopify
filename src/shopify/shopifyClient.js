@@ -233,22 +233,33 @@ class ShopifyClient {
       const sizes = productData.sizes || productData.variants || [];
       let variants = [];
 
+      // Never use Shopify "Default Title" — always a real label (Standard, S, 42…)
+      const optionName =
+        productData.variantLabel ||
+        productData.variantType ||
+        (String(productData.title || '').toLowerCase().includes('montre') ? 'Dimension' : 'Taille');
+
       if (sizes.length > 0) {
-        variants = sizes.map((size, index) => ({
-          option1: size.size || size.value || 'Default',
-          price: (productData.price || 0).toFixed(2),
-          sku: productData.reference || `${productData.kimlandId}-${index}`,
-          inventory_quantity: Math.max(0, size.quantity || 0),
-          inventory_management: 'shopify',
-          inventory_policy: 'deny',
-          fulfillment_service: 'manual',
-          requires_shipping: true,
-          taxable: false,
-          position: index + 1,
-          cost: (productData.costPrice || 0).toFixed(2)
-        }));
+        variants = sizes.map((size, index) => {
+          const label = String(size.size || size.value || 'Standard').trim() || 'Standard';
+          return {
+            option1: label,
+            price: (productData.price || 0).toFixed(2),
+            sku: productData.reference || `${productData.kimlandId}-${index}`,
+            inventory_quantity: Math.max(0, size.quantity || 0),
+            inventory_management: 'shopify',
+            inventory_policy: 'deny',
+            fulfillment_service: 'manual',
+            requires_shipping: true,
+            taxable: false,
+            position: index + 1,
+            cost: (productData.costPrice || 0).toFixed(2)
+          };
+        });
       } else {
+        // Single product (montre, accessoire…) → option "Standard", not Default Title
         variants = [{
+          option1: 'Standard',
           price: (productData.price || 0).toFixed(2),
           sku: productData.reference || 'PROD',
           inventory_quantity: Math.max(0, productData.totalStock || 0),
@@ -267,17 +278,13 @@ class ShopifyClient {
         alt: `${formattedTitle} - Image ${index + 1}`
       }));
 
-      const options = [];
-      if (sizes.length > 0) {
-        const optionValues = sizes.map(s => s.size || s.value || 'Default');
-        const uniqueValues = [...new Set(optionValues)];
-        if (uniqueValues.length > 0) {
-          options.push({
-            name: 'Size',
-            values: uniqueValues
-          });
-        }
-      }
+      // Always send options so Shopify does not invent "Default Title"
+      const optionValues = variants.map(v => v.option1);
+      const uniqueValues = [...new Set(optionValues)];
+      const options = [{
+        name: optionName === 'pointure' ? 'Pointure' : (optionName === 'dimension' ? 'Dimension' : (optionName || 'Taille')),
+        values: uniqueValues
+      }];
 
       const shopifyProduct = {
         product: {
@@ -341,7 +348,7 @@ class ShopifyClient {
         if (existingProduct && existingProduct.variants && existingProduct.variants.length > 0) {
           variants = existingProduct.variants.map(v => ({
             id: v.id,
-            option1: v.option1 || 'Default',
+            option1: v.option1 || 'Standard',
             price: (productData.price !== undefined ? productData.price : parseFloat(v.price)).toFixed(2),
             sku: productData.reference || v.sku || '',
             cost: (productData.costPrice !== undefined ? productData.costPrice : parseFloat(v.cost || 0)).toFixed(2),
@@ -356,7 +363,7 @@ class ShopifyClient {
           logger.info(`✅ Keeping ${variants.length} existing variants`);
         } else {
           variants = [{
-            option1: 'Default',
+            option1: 'Standard',
             price: (productData.price || 0).toFixed(2),
             sku: productData.reference || '',
             cost: (productData.costPrice || 0).toFixed(2),
@@ -373,7 +380,7 @@ class ShopifyClient {
       } else {
         variants = variants.map((v, index) => ({
           id: v.id || undefined,
-          option1: v.value || v.size || 'Default',
+          option1: v.value || v.size || 'Standard',
           price: (productData.price !== undefined ? productData.price : v.price || 0).toFixed(2),
           sku: v.sku || productData.reference || '',
           cost: (productData.costPrice !== undefined ? productData.costPrice : v.cost || 0).toFixed(2),
@@ -564,6 +571,18 @@ class ShopifyClient {
 
   // Find Kimland size entry that matches a Shopify option1 (2XL = XXL)
   matchKimlandSize(shopifyOption, kimlandSizeMap) {
+    const raw = String(shopifyOption || '').trim().toLowerCase();
+    // Shopify leftover "Default Title" → match unique Kimland size (ex: Standard)
+    if (raw === 'default title' || raw === 'default' || raw === 'title') {
+      if (kimlandSizeMap.size === 1) {
+        return kimlandSizeMap.values().next().value;
+      }
+      for (const [, v] of kimlandSizeMap) {
+        const n = this.normalizeSize(v.value);
+        if (n === 'standard' || n === 'unique') return v;
+      }
+    }
+
     const key = this.normalizeSize(shopifyOption);
     for (const [k, v] of kimlandSizeMap) {
       if (this.normalizeSize(k) === key || this.normalizeSize(v.value) === key) return v;
