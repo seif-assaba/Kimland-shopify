@@ -142,6 +142,85 @@ class ShopifyClient {
     }
   }
 
+  /**
+   * Normalize collection title for comparison (ignore emoji, case, extra spaces)
+   */
+  normalizeCollectionTitle(title) {
+    return String(title || '')
+      .normalize('NFKD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^\w\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .toLowerCase();
+  }
+
+  /**
+   * Product IDs that belong to collections to SKIP during sync
+   * Default: BASKET FEMME + Parfum Testeur Original
+   * Override with env SYNC_EXCLUDE_COLLECTIONS=BASKET FEMME,Parfum Testeur
+   */
+  async getExcludedCollectionProductIds(extraTitles = []) {
+    const fromEnv = String(process.env.SYNC_EXCLUDE_COLLECTIONS || '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const defaults = ['BASKET FEMME', 'PARFUM TESTEUR ORIGINAL', 'Parfum Testeur original'];
+    const wanted = [...defaults, ...fromEnv, ...extraTitles].map((t) =>
+      this.normalizeCollectionTitle(t)
+    );
+    const wantedSet = new Set(wanted.filter(Boolean));
+    const productIds = new Set();
+
+    try {
+      const collections = [];
+      for (const endpoint of ['custom_collections', 'smart_collections']) {
+        let nextUrl = `${this.baseUrl}/${endpoint}.json?limit=250`;
+        while (nextUrl) {
+          const response = await this.retryRequest(async () => {
+            return await axios.get(nextUrl, { headers: this.headers });
+          });
+          const key = endpoint;
+          const list = response.data[key] || [];
+          collections.push(...list);
+          nextUrl = this.getNextPageUrl(response.headers.link);
+          if (nextUrl) await this.delay(150);
+        }
+      }
+
+      const matched = collections.filter((c) =>
+        wantedSet.has(this.normalizeCollectionTitle(c.title))
+      );
+
+      if (matched.length === 0) {
+        logger.warn(
+          `⚠️ Aucune collection exclue trouvée (cherché: ${[...wantedSet].join(', ')})`
+        );
+        return productIds;
+      }
+
+      for (const col of matched) {
+        logger.info(`🚫 Collection exclue du sync: "${col.title}" (id=${col.id})`);
+        let nextUrl = `${this.baseUrl}/collections/${col.id}/products.json?limit=250`;
+        while (nextUrl) {
+          const response = await this.retryRequest(async () => {
+            return await axios.get(nextUrl, { headers: this.headers });
+          });
+          const products = response.data.products || [];
+          products.forEach((p) => productIds.add(String(p.id)));
+          nextUrl = this.getNextPageUrl(response.headers.link);
+          if (nextUrl) await this.delay(150);
+        }
+      }
+
+      logger.info(`🚫 ${productIds.size} produit(s) exclus (collections filtrées)`);
+    } catch (error) {
+      this.logApiError(error, 'getExcludedCollectionProductIds');
+    }
+
+    return productIds;
+  }
+
   async publishToAllChannels(productId) {
     try {
       logger.info('📢 Publishing product to all sales channels...');
@@ -1276,6 +1355,113 @@ class ShopifyClient {
       return best;
     }
     return null;
+  }
+
+  isDefaultTitleLabel(label) {
+    const s = String(label || '').trim().toLowerCase();
+    return (
+      s === 'default title' ||
+      s === 'default' ||
+      s === 'title' ||
+      s === 'titre par défaut' ||
+      s === 'titre par defaut' ||
+      s === 'défaut' ||
+      s === 'defaut'
+    );
+  }
+
+  /**
+   * Fix "Default Title" on one Shopify product.
+   * - 1 variant Default Title → rename to Standard
+   * - Default Title + other real sizes → remove Default Title variant from product
+   * - Default Title only among many → rename to Standard if no Standard exists
+   */
+  async fixDefaultTitleOnProduct(productId) {
+    const product = await this.getProduct(productId);
+    if (!product) return { fixed: false, reason: 'not_found' };
+
+    const variants = product.variants || [];
+    const defaults = variants.filter((v) => this.isDefaultTitleLabel(v.option1));
+    if (defaults.length === 0) {
+      return { fixed: false, reason: 'none', title: product.title };
+    }
+
+    const realVariants = variants.filter((v) => !this.isDefaultTitleLabel(v.option1));
+
+    // Case A: only default variant(s), no real sizes
+    if (realVariants.length === 0) {
+      for (const v of defaults) {
+        try {
+          await this.retryRequest(async () => {
+            return await axios.put(
+              `${this.baseUrl}/variants/${v.id}.json`,
+              { variant: { id: v.id, option1: 'Standard' } },
+              { headers: this.headers }
+            );
+          });
+        } catch (e) {
+          logger.warn(`⚠️ Rename Default→Standard failed #${v.id}: ${e.message}`);
+          return { fixed: false, reason: e.message, title: product.title };
+        }
+      }
+      // Ensure product option values include Standard
+      try {
+        await this.retryRequest(async () => {
+          return await axios.put(
+            `${this.baseUrl}/products/${productId}.json`,
+            {
+              product: {
+                id: productId,
+                options: [{ name: (product.options && product.options[0] && product.options[0].name) || 'Dimension', values: ['Standard'] }]
+              }
+            },
+            { headers: this.headers }
+          );
+        });
+      } catch (_) {}
+      logger.info(`✅ Fixed Default Title → Standard: ${product.title}`);
+      return { fixed: true, action: 'renamed_to_standard', title: product.title };
+    }
+
+    // Case B: has real sizes + Default Title ghost → rebuild product variants without Default Title
+    try {
+      const kept = realVariants.map((v, index) => ({
+        id: v.id,
+        option1: v.option1,
+        price: v.price,
+        sku: v.sku,
+        barcode: v.barcode,
+        inventory_management: v.inventory_management || 'shopify',
+        inventory_policy: v.inventory_policy || 'deny',
+        fulfillment_service: v.fulfillment_service || 'manual',
+        requires_shipping: v.requires_shipping !== false,
+        taxable: false,
+        position: index + 1
+      }));
+
+      const optionValues = [...new Set(kept.map((v) => v.option1))];
+      const optionName = (product.options && product.options[0] && product.options[0].name) || 'Taille';
+
+      await this.retryRequest(async () => {
+        return await axios.put(
+          `${this.baseUrl}/products/${productId}.json`,
+          {
+            product: {
+              id: productId,
+              variants: kept,
+              options: [{ name: optionName, values: optionValues }]
+            }
+          },
+          { headers: this.headers }
+        );
+      });
+
+      logger.info(`✅ Removed Default Title ghost from: ${product.title} (kept ${kept.length} sizes)`);
+      return { fixed: true, action: 'removed_default_kept_sizes', title: product.title, kept: kept.length };
+    } catch (e) {
+      logger.warn(`⚠️ Remove Default Title failed ${product.title}: ${e.message}`);
+      return { fixed: false, reason: e.message, title: product.title };
+    }
   }
 
   determineProductType(title) {

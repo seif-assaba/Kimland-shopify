@@ -695,6 +695,7 @@
         <button class="btn btn-bulk" id="extractBtn" onclick="extractProducts()">🔍 Extraire les produits</button>
         <button class="btn btn-success" id="uploadAllBtn" onclick="uploadAll()" disabled>📤 Tout importer</button>
         <button class="btn btn-sync" id="syncAllBtn" onclick="syncAllPricesStock()">🔄 Sync Prix & Stock</button>
+        <button class="btn btn-warning" id="fixDefaultBtn" onclick="fixDefaultTitlesAll()">🧹 Fix Default Title</button>
         <button class="btn btn-get" id="getProductsBtn" onclick="loadShopifyProducts()">📦 Récupérer les produits</button>
         <button class="btn btn-refresh" id="refreshBtn" onclick="refreshStatus()">🔄 Rafraîchir</button>
         <button class="btn btn-danger" id="clearBtn" onclick="clearAll()">🗑️ Tout effacer</button>
@@ -1867,9 +1868,11 @@
     async function syncAllPricesStock() {
       var confirmed = confirm(
         '🔄 Synchroniser TOUS les produits Shopify par SKU ?\n\n' +
-        'Le travail tourne SUR LE SERVEUR (pas sur le téléphone).\n' +
-        'Tu peux laisser l\'écran allumé ou revenir plus tard —\n' +
-        'la progression continue côté serveur.\n\n' +
+        'Le travail tourne SUR LE SERVEUR (comme Brands Square).\n' +
+        'Progression 1/N … N/N côté serveur.\n\n' +
+        'EXCLUS (pas de sync) :\n' +
+        '• Collection BASKET FEMME\n' +
+        '• Collection Parfum Testeur original\n\n' +
         'Ne change PAS titre / description / photos.\n\n' +
         'Continuer ?'
       );
@@ -2004,6 +2007,67 @@
       }
     }
 
+
+    // =============================================
+    // FIX Default Title sur TOUS les produits Shopify
+    // =============================================
+    async function fixDefaultTitlesAll() {
+      var confirmed = confirm(
+        '🧹 Corriger "Default Title" sur TOUS les produits ?\n\n' +
+        '• 1 seule variante Default Title → renommée en Standard\n' +
+        '• Default Title + vraies tailles → suppression du Default Title\n\n' +
+        'Tourne sur le serveur (fiable téléphone).\nContinuer ?'
+      );
+      if (!confirmed) return;
+
+      var btn = document.getElementById('fixDefaultBtn');
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = '⏳ Fix...';
+      }
+
+      try {
+        var startRes = await fetch('/api/fix-default-title-start', { method: 'POST' });
+        var startData = await startRes.json();
+        if (!startData.success && !startData.alreadyRunning) {
+          throw new Error(startData.message || 'Impossible de démarrer');
+        }
+
+        showProgress(true, 'Correction Default Title...');
+        var done = false;
+        while (!done) {
+          await new Promise(function(r) { setTimeout(r, 1500); });
+          var stRes = await fetch('/api/fix-default-title-status');
+          var st = await stRes.json();
+          var job = st.job || {};
+          var cur = job.current || 0;
+          var tot = job.total || 0;
+          if (typeof updateProgress === 'function') {
+            updateProgress(cur, tot || 1, job.title || '');
+          }
+          if (btn) btn.textContent = tot ? ('⏳ ' + cur + '/' + tot) : '⏳ Fix...';
+
+          if (!job.running) {
+            done = true;
+            var msg = '🧹 <strong>Correction terminée</strong><br><br>';
+            msg += '✅ Corrigés: <strong>' + (job.fixed || 0) + '</strong><br>';
+            msg += '⏭️ Déjà OK: <strong>' + (job.skipped || 0) + '</strong><br>';
+            msg += '❌ Erreurs: <strong>' + (job.errors || 0) + '</strong><br>';
+            msg += '📦 Total: <strong>' + (job.total || 0) + '</strong>';
+            if (job.message) msg += '<br><br>' + job.message;
+            await showPopup('Default Title', msg, (job.errors || 0) === 0 ? '✅' : '⚠️', (job.errors || 0) === 0 ? 'success' : 'warning');
+          }
+        }
+      } catch (err) {
+        await showPopup('Erreur', '❌ ' + err.message, '❌', 'error');
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = '🧹 Fix Default Title';
+        }
+        showProgress(false);
+      }
+    }
 
     window.onload = function() {
       autoLoadProducts();

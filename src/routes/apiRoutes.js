@@ -1687,6 +1687,23 @@ router.post('/sync-one', async (req, res) => {
       });
     }
 
+    // Skip BASKET FEMME + Parfum Testeur (cached 10 min)
+    try {
+      if (!global.__excludedCollectionIds || Date.now() - (global.__excludedCollectionAt || 0) > 10 * 60 * 1000) {
+        global.__excludedCollectionIds = await shopify.getExcludedCollectionProductIds();
+        global.__excludedCollectionAt = Date.now();
+      }
+      if (global.__excludedCollectionIds && global.__excludedCollectionIds.has(String(shopifyProductId))) {
+        return res.json({
+          success: false,
+          skipped: true,
+          message: 'Collection exclue (BASKET FEMME / Parfum Testeur)',
+          title: titleHint,
+          shopifyId: shopifyProductId
+        });
+      }
+    } catch (_) {}
+
     const reference = pickReferenceFromShopifyProduct(sp);
     if (!reference) {
       return res.json({
@@ -1815,13 +1832,41 @@ async function runSyncAllJob() {
   try {
     logger.info('📦 SYNC-ALL job: chargement produits Shopify...');
     const allProducts = await shopify.getAllProducts(250);
-    const list = (allProducts || []).filter(
-      (p) => String(p.status || '').toLowerCase() !== 'archived'
-    );
+
+    // Exclude collections: BASKET FEMME + Parfum Testeur Original (same logic as Brands Square sync, with filters)
+    let excludedIds = new Set();
+    try {
+      excludedIds = await shopify.getExcludedCollectionProductIds();
+    } catch (e) {
+      logger.warn('⚠️ Impossible de charger les collections exclues: ' + e.message);
+    }
+
+    const list = (allProducts || []).filter((p) => {
+      if (String(p.status || '').toLowerCase() === 'archived') return false;
+      if (excludedIds.has(String(p.id))) return false;
+      return true;
+    });
+
+    const excludedCount = (allProducts || []).filter((p) =>
+      excludedIds.has(String(p.id))
+    ).length;
 
     syncJob.total = list.length;
     syncJob.current = 0;
-    logger.info(`🔄 SYNC-ALL job: ${list.length} produits`);
+    logger.info(
+      `🔄 SYNC-ALL job: ${list.length} produits (exclus collections: ${excludedCount})`
+    );
+
+    // Mark excluded as skipped in summary
+    for (const p of allProducts || []) {
+      if (excludedIds.has(String(p.id))) {
+        syncJob.skipped.push({
+          shopifyId: p.id,
+          title: p.title || String(p.id),
+          reason: 'Collection exclue (BASKET FEMME / Parfum Testeur)'
+        });
+      }
+    }
 
     const scraper = await KimlandScraper.getInstance();
 
@@ -2025,6 +2070,101 @@ router.post('/sync-all-stop', (req, res) => {
     syncJob.message = 'Arrêt demandé...';
   }
   res.json({ success: true, message: 'Arrêt demandé' });
+});
+
+// =============================================
+// FIX "Default Title" en masse
+// =============================================
+const fixDefaultJob = {
+  running: false,
+  current: 0,
+  total: 0,
+  fixed: 0,
+  skipped: 0,
+  errors: 0,
+  title: '',
+  message: '',
+  finishedAt: null
+};
+
+async function runFixDefaultTitleJob() {
+  const shopify = new ShopifyClient();
+  try {
+    const all = await shopify.getAllProducts(250);
+    fixDefaultJob.total = all.length;
+    fixDefaultJob.current = 0;
+    fixDefaultJob.fixed = 0;
+    fixDefaultJob.skipped = 0;
+    fixDefaultJob.errors = 0;
+
+    for (let i = 0; i < all.length; i++) {
+      if (!fixDefaultJob.running) break;
+      const p = all[i];
+      fixDefaultJob.current = i + 1;
+      fixDefaultJob.title = p.title || String(p.id);
+
+      try {
+        const result = await shopify.fixDefaultTitleOnProduct(p.id);
+        if (result.fixed) fixDefaultJob.fixed++;
+        else fixDefaultJob.skipped++;
+      } catch (e) {
+        fixDefaultJob.errors++;
+        logger.warn(`⚠️ fix default #${p.id}: ${e.message}`);
+      }
+      await new Promise((r) => setTimeout(r, 150));
+    }
+
+    fixDefaultJob.message =
+      `Terminé: ${fixDefaultJob.fixed} corrigés, ${fixDefaultJob.skipped} déjà OK, ${fixDefaultJob.errors} erreurs`;
+    logger.info(`🎉 ${fixDefaultJob.message}`);
+  } catch (e) {
+    fixDefaultJob.message = 'Erreur: ' + e.message;
+    logger.error(fixDefaultJob.message);
+  } finally {
+    fixDefaultJob.running = false;
+    fixDefaultJob.finishedAt = new Date().toISOString();
+  }
+}
+
+router.post('/fix-default-title-start', (req, res) => {
+  if (fixDefaultJob.running) {
+    return res.json({ success: true, alreadyRunning: true, job: fixDefaultJob });
+  }
+  fixDefaultJob.running = true;
+  fixDefaultJob.current = 0;
+  fixDefaultJob.total = 0;
+  fixDefaultJob.fixed = 0;
+  fixDefaultJob.skipped = 0;
+  fixDefaultJob.errors = 0;
+  fixDefaultJob.title = '';
+  fixDefaultJob.message = 'Démarrage...';
+  fixDefaultJob.finishedAt = null;
+
+  res.json({ success: true, started: true });
+  setImmediate(() => {
+    runFixDefaultTitleJob().catch((e) => {
+      fixDefaultJob.running = false;
+      fixDefaultJob.message = e.message;
+      fixDefaultJob.finishedAt = new Date().toISOString();
+    });
+  });
+});
+
+router.get('/fix-default-title-status', (req, res) => {
+  res.json({
+    success: true,
+    job: {
+      running: fixDefaultJob.running,
+      current: fixDefaultJob.current,
+      total: fixDefaultJob.total,
+      fixed: fixDefaultJob.fixed,
+      skipped: fixDefaultJob.skipped,
+      errors: fixDefaultJob.errors,
+      title: fixDefaultJob.title,
+      message: fixDefaultJob.message,
+      finishedAt: fixDefaultJob.finishedAt
+    }
+  });
 });
 
 module.exports = router;
