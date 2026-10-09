@@ -1464,8 +1464,129 @@ class ShopifyClient {
     }
   }
 
+  /**
+   * Parfum / single-SKU products: force Shopify "Default Title" structure.
+   * Themes use product.has_only_default_variant → hide "Title" + "Standard" picker.
+   */
+  async forceHiddenDefaultVariant(productId) {
+    const product = await this.getProduct(productId);
+    if (!product) return { fixed: false, reason: 'not_found' };
+
+    const variants = product.variants || [];
+    if (variants.length === 0) {
+      return { fixed: false, reason: 'no_variants', title: product.title };
+    }
+
+    // Already pure Default Title only
+    if (
+      variants.length === 1 &&
+      this.isDefaultTitleLabel(variants[0].option1) &&
+      String(variants[0].option1).toLowerCase().includes('default')
+    ) {
+      const optName = (product.options && product.options[0] && product.options[0].name) || '';
+      if (/^title$/i.test(optName) || !optName) {
+        return { fixed: false, reason: 'already_default', title: product.title };
+      }
+    }
+
+    // Keep first variant (parfums = 1 SKU); merge inventory if multiple
+    const primary = variants[0];
+    let totalQty = 0;
+    for (const v of variants) {
+      totalQty += Number(v.inventory_quantity || 0);
+    }
+
+    try {
+      await this.retryRequest(async () => {
+        return await axios.put(
+          `${this.baseUrl}/products/${productId}.json`,
+          {
+            product: {
+              id: productId,
+              options: [{ name: 'Title', values: ['Default Title'] }],
+              variants: [
+                {
+                  id: primary.id,
+                  option1: 'Default Title',
+                  price: primary.price,
+                  sku: primary.sku || '',
+                  barcode: primary.barcode || '',
+                  inventory_management: primary.inventory_management || 'shopify',
+                  inventory_policy: primary.inventory_policy || 'deny',
+                  fulfillment_service: primary.fulfillment_service || 'manual',
+                  requires_shipping: primary.requires_shipping !== false,
+                  taxable: false,
+                  position: 1
+                }
+              ]
+            }
+          },
+          { headers: this.headers }
+        );
+      });
+
+      // Restore combined stock on the remaining variant
+      try {
+        await this.updateInventory(primary.id, totalQty);
+      } catch (_) {}
+
+      logger.info(`✅ Parfum → Default Title (picker hidden): ${product.title}`);
+      return { fixed: true, action: 'default_title_hidden', title: product.title };
+    } catch (e) {
+      logger.warn(`⚠️ forceHiddenDefaultVariant failed ${product.title}: ${e.message}`);
+      return { fixed: false, reason: e.message, title: product.title };
+    }
+  }
+
+  /**
+   * Product IDs in specific collections (by title), e.g. Parfum Testeur
+   */
+  async getCollectionProductIdsByTitles(titles) {
+    const wanted = (titles || []).map((t) => this.normalizeCollectionTitle(t));
+    const wantedSet = new Set(wanted.filter(Boolean));
+    const productIds = new Set();
+    if (wantedSet.size === 0) return productIds;
+
+    try {
+      const collections = [];
+      for (const endpoint of ['custom_collections', 'smart_collections']) {
+        let nextUrl = `${this.baseUrl}/${endpoint}.json?limit=250`;
+        while (nextUrl) {
+          const response = await this.retryRequest(async () => {
+            return await axios.get(nextUrl, { headers: this.headers });
+          });
+          collections.push(...(response.data[endpoint] || []));
+          nextUrl = this.getNextPageUrl(response.headers.link);
+          if (nextUrl) await this.delay(150);
+        }
+      }
+
+      const matched = collections.filter((c) =>
+        wantedSet.has(this.normalizeCollectionTitle(c.title))
+      );
+
+      for (const col of matched) {
+        logger.info(`📦 Collection ciblée: "${col.title}" (id=${col.id})`);
+        let nextUrl = `${this.baseUrl}/collections/${col.id}/products.json?limit=250`;
+        while (nextUrl) {
+          const response = await this.retryRequest(async () => {
+            return await axios.get(nextUrl, { headers: this.headers });
+          });
+          (response.data.products || []).forEach((p) => productIds.add(String(p.id)));
+          nextUrl = this.getNextPageUrl(response.headers.link);
+          if (nextUrl) await this.delay(150);
+        }
+      }
+      logger.info(`📦 ${productIds.size} produit(s) dans collection(s) ciblée(s)`);
+    } catch (error) {
+      this.logApiError(error, 'getCollectionProductIdsByTitles');
+    }
+    return productIds;
+  }
+
   determineProductType(title) {
     const lower = title.toLowerCase();
+    if (lower.includes('parfum') || lower.includes('perfume') || lower.includes('eau de')) return 'Perfume';
     if (lower.includes('chaussure') || lower.includes('shoe') || lower.includes('pointure')) return 'Shoes';
     if (lower.includes('robe') || lower.includes('dress')) return 'Dress';
     if (lower.includes('pantalon') || lower.includes('jeans') || lower.includes('short')) return 'Pants';

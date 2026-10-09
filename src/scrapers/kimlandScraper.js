@@ -99,10 +99,14 @@ class KimlandScraper {
         }
       });
 
-      // Block heavy resources (keep stylesheet so login UI still works)
+      // Block heavy / useless resources (keep CSS + XHR for login + search)
       await this.context.route('**/*', (route) => {
         const type = route.request().resourceType();
+        const url = route.request().url();
         if (['image', 'media', 'font'].includes(type)) {
+          return route.abort();
+        }
+        if (/google-analytics|googletagmanager|facebook\.net|hotjar|clarity\.ms|doubleclick/i.test(url)) {
           return route.abort();
         }
         return route.continue();
@@ -443,8 +447,10 @@ class KimlandScraper {
         await this.page.waitForTimeout(600);
         await this.page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {});
 
-        // Debug screenshot
-        await this.page.screenshot({ path: 'debug-scraper-view.png', fullPage: true }).catch(() => {});
+        // Optional debug screenshot only (saves disk + CPU)
+        if (process.env.DEBUG_SCREENSHOT === 'true') {
+          await this.page.screenshot({ path: 'debug-scraper-view.png', fullPage: false }).catch(() => {});
+        }
 
         const productData = await this.page.evaluate(() => {
           // ---------- helpers ----------
@@ -1020,9 +1026,9 @@ class KimlandScraper {
     });
   }
 
-  // ====================== CLOSE ======================
   // =============================================
   // Find product page URL on Kimland by REFERENCE (SKU)
+  // Listing cards often show title only (not SKU) — take first result
   // =============================================
   async findProductUrlByReference(reference) {
     const cleanRef = String(reference || '').trim();
@@ -1032,68 +1038,176 @@ class KimlandScraper {
 
     const searchUrls = [
       `https://kimland.dz/index.php?page=products&pages=0&keyword=${encodeURIComponent(cleanRef)}`,
-      `https://kimland.dz/index.php?page=products&keyword=${encodeURIComponent(cleanRef)}`,
-      `https://kimland.dz/index.php?page=products&keyword=${encodeURIComponent(cleanRef)}&pages=0`
+      `https://kimland.dz/index.php?page=products&keyword=${encodeURIComponent(cleanRef)}`
     ];
 
     for (const searchUrl of searchUrls) {
       try {
         logger.info(`🔍 Search Kimland by ref: ${cleanRef}`);
-        await this.page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: 20000 });
-        await this.page.waitForTimeout(2000);
+        await this.page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: 25000 });
+
+        // Anti-bot interstitial ("Checking your browser...")
+        try {
+          const bot = await this.page.evaluate(() =>
+            /checking your browser|please wait/i.test(document.title + ' ' + (document.body?.innerText || ''))
+          );
+          if (bot) {
+            logger.info('⏳ Anti-bot page detected, waiting...');
+            await this.page.waitForTimeout(4500);
+            await this.page.waitForLoadState('domcontentloaded').catch(() => {});
+          }
+        } catch (_) {}
+
+        await this.page.waitForTimeout(1500);
+        try {
+          await this.page.waitForSelector(
+            'a[href*="/product/"], a[href*="page=product"], .product-item a, .product a, .product-thumb a, .product-layout a',
+            { timeout: 8000 }
+          );
+        } catch (_) {
+          logger.warn('⚠️ Aucun lien produit apparu rapidement');
+        }
 
         const result = await this.page.evaluate((ref) => {
-          const refLower = ref.toLowerCase();
-          const links = Array.from(document.querySelectorAll('a'));
+          const refLower = String(ref || '').toLowerCase();
+          const abs = (href) => {
+            if (!href) return '';
+            if (href.startsWith('//')) return 'https:' + href;
+            if (href.startsWith('/')) return 'https://kimland.dz' + href;
+            if (!href.startsWith('http')) return 'https://kimland.dz/' + href.replace(/^\.\//, '');
+            return href;
+          };
 
-          // Prefer links that look like product pages AND mention the ref
+          const isProductHref = (href) => {
+            if (!href) return false;
+            const h = href.toLowerCase();
+            if (h.includes('logout') || h.includes('login') || h.includes('cart') || h.includes('account')) return false;
+            return (
+              h.includes('/product/') ||
+              h.includes('page=product') ||
+              h.includes('product.php') ||
+              /[?&]id=\d+/.test(h) ||
+              /\/product\/\d+/i.test(h)
+            );
+          };
+
           const productHrefs = [];
-          for (const link of links) {
-            const href = link.href || '';
-            if (!href) continue;
-            const isProduct =
-              href.includes('/product/') ||
-              href.includes('page=product') ||
-              href.includes('product.php') ||
-              /\/product\/\d+/i.test(href);
-            if (!isProduct) continue;
+          const seen = new Set();
 
-            let url = href;
-            if (url.startsWith('/')) url = 'https://kimland.dz' + url;
+          document.querySelectorAll('a[href]').forEach((link) => {
+            const href = link.getAttribute('href') || link.href || '';
+            if (!isProductHref(href)) return;
+            const url = abs(href).split('#')[0];
+            const key = url.split('?')[0] + (url.match(/[?&]id=(\d+)/)?.[1] || '');
+            if (seen.has(key)) return;
+            seen.add(key);
 
             const text = (link.textContent || '').trim().toLowerCase();
-            const parentText = (link.closest('.product, .product-item, .item, li, article, .card')?.textContent || '').toLowerCase();
+            const parentText = (
+              link.closest(
+                '.product, .product-item, .product-layout, .product-thumb, .item, li, article, .card, .thumbnail'
+              )?.textContent || ''
+            ).toLowerCase();
             const hay = text + ' ' + parentText + ' ' + href.toLowerCase();
+            let score = 1;
+            if (hay.includes(refLower)) score = 10;
+            if (/\/product\/\d+/i.test(url) || /page=product/i.test(url)) score += 3;
+            productHrefs.push({ url, score, text: text.slice(0, 80) });
+          });
 
-            productHrefs.push({ url, score: hay.includes(refLower) ? 2 : 1, text });
-          }
+          document.querySelectorAll('[data-href], [data-url], [data-product-url]').forEach((el) => {
+            const href = el.getAttribute('data-href') || el.getAttribute('data-url') || el.getAttribute('data-product-url');
+            if (!isProductHref(href)) return;
+            const url = abs(href);
+            if (seen.has(url)) return;
+            seen.add(url);
+            productHrefs.push({ url, score: 2, text: 'data-attr' });
+          });
 
-          // Exact-ish match first
           productHrefs.sort((a, b) => b.score - a.score);
-          if (productHrefs.length && productHrefs[0].score >= 2) {
-            return productHrefs[0].url;
+
+          if (productHrefs.length && productHrefs[0].score >= 10) {
+            return { url: productHrefs[0].url, how: 'ref-in-card' };
           }
 
-          // If only one product on page, take it
-          const unique = [...new Set(productHrefs.map(p => p.url.split('?')[0]))];
-          if (unique.length === 1) return unique[0];
-          if (productHrefs.length === 1) return productHrefs[0].url;
+          const body = (document.body?.innerText || '').toLowerCase();
+          const oneResult =
+            /1\s*r[ée]sultat/.test(body) ||
+            /1\s*result/.test(body) ||
+            /afficher\s*:\s*\d+\s*produits\s*\/\s*1\s*r/.test(body);
 
-          // First product card
-          const first = document.querySelector(
-            'a[href*="/product/"], a[href*="page=product"], a[href*="product.php"]'
+          const unique = [...new Set(productHrefs.map((p) => p.url.split('?')[0]))];
+          if (oneResult && productHrefs.length >= 1) {
+            return { url: productHrefs[0].url, how: 'one-result' };
+          }
+          if (unique.length === 1) {
+            return { url: productHrefs[0].url, how: 'unique-url' };
+          }
+          if (productHrefs.length === 1) {
+            return { url: productHrefs[0].url, how: 'single-link' };
+          }
+
+          const cardLink = document.querySelector(
+            '.product-layout a[href], .product-thumb a[href], .product-item a[href], .product a[href], .product-grid a[href]'
           );
-          if (first) {
-            let url = first.href;
-            if (url.startsWith('/')) url = 'https://kimland.dz' + url;
-            return url;
+          if (cardLink && isProductHref(cardLink.href || cardLink.getAttribute('href'))) {
+            return { url: abs(cardLink.href || cardLink.getAttribute('href')), how: 'first-card' };
           }
-          return null;
+
+          if (productHrefs.length > 0) {
+            return { url: productHrefs[0].url, how: 'best-score', candidates: productHrefs.length };
+          }
+
+          return {
+            url: null,
+            how: 'none',
+            debug: {
+              anchors: document.querySelectorAll('a[href]').length,
+              bodySample: body.slice(0, 200)
+            }
+          };
         }, cleanRef);
 
-        if (result) {
-          logger.info(`✅ Found via search: ${result}`);
-          return result;
+        if (result && result.url) {
+          logger.info(`✅ Found via search (${result.how}): ${result.url}`);
+          return result.url;
+        }
+
+        // Fallback: click first product card
+        try {
+          const clicked = await this.page.evaluate(() => {
+            const selectors = [
+              '.product-layout a[href*="product"]',
+              '.product-thumb a[href*="product"]',
+              '.product-item a[href*="product"]',
+              'a[href*="/product/"]',
+              'a[href*="page=product"]',
+              '.product a[href]',
+              '.product-grid a[href]'
+            ];
+            for (const sel of selectors) {
+              const el = document.querySelector(sel);
+              if (el) {
+                el.click();
+                return true;
+              }
+            }
+            return false;
+          });
+          if (clicked) {
+            await this.page.waitForTimeout(2000);
+            const url = this.page.url();
+            if (/product/i.test(url) && !/page=products/i.test(url)) {
+              logger.info(`✅ Found via click navigation: ${url}`);
+              return url;
+            }
+          }
+        } catch (clickErr) {
+          logger.warn(`⚠️ Click fallback failed: ${clickErr.message}`);
+        }
+
+        if (result && result.debug) {
+          logger.warn(`⚠️ Search debug: anchors=${result.debug.anchors}`);
         }
       } catch (e) {
         logger.warn(`⚠️ Search attempt failed: ${e.message}`);
