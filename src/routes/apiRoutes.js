@@ -1661,150 +1661,175 @@ function pickReferenceFromShopifyProduct(product) {
   return '';
 }
 
+// File d'attente: 1 seul sync-one à la fois (évite ouverture/fermeture Chromium en boucle)
+let syncOneQueue = Promise.resolve();
+function enqueueSyncOne(fn) {
+  const run = syncOneQueue.then(fn, fn);
+  syncOneQueue = run.catch(() => {});
+  return run;
+}
+
 router.post('/sync-one', async (req, res) => {
   const { shopifyProductId } = req.body;
   if (!shopifyProductId) {
     return res.status(400).json({ success: false, message: 'shopifyProductId est requis' });
   }
 
-  const shopify = new ShopifyClient();
-  const store = new SyncStore();
+  return enqueueSyncOne(async () => {
+    const shopify = new ShopifyClient();
+    const store = new SyncStore();
 
-  try {
-    const sp = await shopify.getProduct(shopifyProductId);
-    if (!sp) {
-      return res.status(404).json({ success: false, message: 'Produit Shopify introuvable' });
-    }
-
-    const titleHint = sp.title || String(shopifyProductId);
-    if (String(sp.status || '').toLowerCase() === 'archived') {
-      return res.json({
-        success: false,
-        skipped: true,
-        message: 'Produit archivé',
-        title: titleHint,
-        shopifyId: shopifyProductId
-      });
-    }
-
-    // Skip BASKET FEMME + Parfum Testeur (cached 10 min)
     try {
-      if (!global.__excludedCollectionIds || Date.now() - (global.__excludedCollectionAt || 0) > 10 * 60 * 1000) {
-        global.__excludedCollectionIds = await shopify.getExcludedCollectionProductIds();
-        global.__excludedCollectionAt = Date.now();
+      const sp = await shopify.getProduct(shopifyProductId);
+      if (!sp) {
+        return res.status(404).json({ success: false, message: 'Produit Shopify introuvable' });
       }
-      if (global.__excludedCollectionIds && global.__excludedCollectionIds.has(String(shopifyProductId))) {
+
+      const titleHint = sp.title || String(shopifyProductId);
+      if (String(sp.status || '').toLowerCase() === 'archived') {
         return res.json({
           success: false,
           skipped: true,
-          message: 'Collection exclue (BASKET FEMME / Parfum Testeur)',
+          message: 'Produit archivé',
           title: titleHint,
           shopifyId: shopifyProductId
         });
       }
-    } catch (_) {}
 
-    const reference = pickReferenceFromShopifyProduct(sp);
-    if (!reference) {
-      return res.json({
-        success: false,
-        skipped: true,
-        message: 'Aucun SKU/barcode sur les variantes',
-        title: titleHint,
-        shopifyId: shopifyProductId
-      });
-    }
-
-    logger.info(`🔄 SYNC-ONE #${shopifyProductId} | ${titleHint} | SKU=${reference}`);
-
-    let url = null;
-    try {
-      const mappings = store.getAllMappings() || {};
-      for (const [, m] of Object.entries(mappings)) {
-        if (String(m.shopifyId || m.shopify_id) === String(shopifyProductId)) {
-          const u = m.url || m.kimlandUrl;
-          if (u && /kimland\.dz\/product\/\d+/i.test(String(u))) {
-            url = u;
-            break;
-          }
+      // Skip BASKET FEMME + Parfum Testeur (cache 10 min)
+      try {
+        if (!global.__excludedCollectionIds || Date.now() - (global.__excludedCollectionAt || 0) > 10 * 60 * 1000) {
+          global.__excludedCollectionIds = await shopify.getExcludedCollectionProductIds();
+          global.__excludedCollectionAt = Date.now();
         }
-      }
-    } catch (_) {}
+        if (global.__excludedCollectionIds && global.__excludedCollectionIds.has(String(shopifyProductId))) {
+          return res.json({
+            success: false,
+            skipped: true,
+            message: 'Collection exclue (BASKET FEMME / Parfum Testeur)',
+            title: titleHint,
+            shopifyId: shopifyProductId
+          });
+        }
+      } catch (_) {}
 
-    const scraper = await KimlandScraper.getInstance();
-    if (!url) {
-      url = await scraper.findProductUrlByReference(reference);
-    }
-
-    if (!url) {
-      try { await scraper.maybeRestartBrowser(); } catch (_) {}
-      return res.json({
-        success: false,
-        error: true,
-        message: 'Introuvable sur Kimland pour ce SKU',
-        title: titleHint,
-        reference,
-        shopifyId: shopifyProductId
-      });
-    }
-
-    const kimlandData = await scraper.extractProductFromUrl(url);
-    const check = isValidKimlandExtract(kimlandData);
-    if (!check.ok) {
-      try { await scraper.maybeRestartBrowser(); } catch (_) {}
-      return res.json({
-        success: false,
-        error: true,
-        message: check.reason,
-        title: titleHint,
-        reference,
-        url,
-        shopifyId: shopifyProductId
-      });
-    }
-
-    if (typeof shopify.syncPriceAndStock !== 'function') {
-      return res.status(500).json({
-        success: false,
-        message: 'syncPriceAndStock manquant dans ShopifyClient — mettez à jour shopifyClient.js'
-      });
-    }
-
-    const result = await shopify.syncPriceAndStock(shopifyProductId, kimlandData);
-
-    try {
-      if (kimlandData.kimlandId) {
-        store.saveMapping(kimlandData.kimlandId, shopifyProductId, {
-          title: kimlandData.title,
-          reference: kimlandData.reference || reference,
-          url: kimlandData.url || url,
-          price: kimlandData.price,
-          costPrice: kimlandData.costPrice,
-          lastSyncedAt: new Date().toISOString()
+      const reference = pickReferenceFromShopifyProduct(sp);
+      if (!reference) {
+        return res.json({
+          success: false,
+          skipped: true,
+          message: 'Aucun SKU/barcode sur les variantes',
+          title: titleHint,
+          shopifyId: shopifyProductId
         });
       }
-    } catch (_) {}
 
-    try { await scraper.maybeRestartBrowser(); } catch (_) {}
+      logger.info(`🔄 SYNC-ONE #${shopifyProductId} | ${titleHint} | SKU=${reference}`);
 
-    res.json({
-      success: true,
-      message: 'Synchronisé',
-      title: kimlandData.title || titleHint,
-      reference: kimlandData.reference || reference,
-      shopifyId: shopifyProductId,
-      report: result.report
-    });
-  } catch (error) {
-    logger.error(`❌ sync-one échoué #${shopifyProductId}:`, error.message);
-    try { await KimlandScraper.closeInstance(); } catch (_) {}
-    res.status(500).json({
-      success: false,
-      error: true,
-      message: error.message,
-      shopifyId: shopifyProductId
-    });
-  }
+      let url = null;
+      try {
+        const mappings = store.getAllMappings() || {};
+        for (const [, m] of Object.entries(mappings)) {
+          if (String(m.shopifyId || m.shopify_id) === String(shopifyProductId)) {
+            const u = m.url || m.kimlandUrl;
+            if (u && /kimland\.dz\/product\/\d+/i.test(String(u))) {
+              url = u;
+              break;
+            }
+          }
+        }
+      } catch (_) {}
+
+      const scraper = await KimlandScraper.getInstance();
+      if (!url) {
+        if (typeof scraper.findProductUrlByReference !== 'function') {
+          throw new Error('findProductUrlByReference manquant — mettez à jour kimlandScraper.js');
+        }
+        url = await scraper.findProductUrlByReference(reference);
+      }
+
+      if (!url) {
+        try { await scraper.maybeRestartBrowser(); } catch (_) {}
+        return res.json({
+          success: false,
+          error: true,
+          message: 'Introuvable sur Kimland pour ce SKU',
+          title: titleHint,
+          reference,
+          shopifyId: shopifyProductId
+        });
+      }
+
+      const kimlandData = await scraper.extractProductFromUrl(url);
+      const check = isValidKimlandExtract(kimlandData);
+      if (!check.ok) {
+        try { await scraper.maybeRestartBrowser(); } catch (_) {}
+        return res.json({
+          success: false,
+          error: true,
+          message: check.reason,
+          title: titleHint,
+          reference,
+          url,
+          shopifyId: shopifyProductId
+        });
+      }
+
+      if (typeof shopify.syncPriceAndStock !== 'function') {
+        return res.status(500).json({
+          success: false,
+          message: 'syncPriceAndStock manquant dans ShopifyClient — mettez à jour shopifyClient.js'
+        });
+      }
+
+      const result = await shopify.syncPriceAndStock(shopifyProductId, kimlandData);
+
+      try {
+        if (kimlandData.kimlandId) {
+          store.saveMapping(kimlandData.kimlandId, shopifyProductId, {
+            title: kimlandData.title,
+            reference: kimlandData.reference || reference,
+            url: kimlandData.url || url,
+            price: kimlandData.price,
+            costPrice: kimlandData.costPrice,
+            lastSyncedAt: new Date().toISOString()
+          });
+        }
+      } catch (_) {}
+
+      try { await scraper.maybeRestartBrowser(); } catch (_) {}
+
+      return res.json({
+        success: true,
+        message: 'Synchronisé',
+        title: kimlandData.title || titleHint,
+        reference: kimlandData.reference || reference,
+        shopifyId: shopifyProductId,
+        report: result.report
+      });
+    } catch (error) {
+      const msg = error && error.message ? error.message : String(error);
+      const stack = error && error.stack ? error.stack : '';
+      logger.error(`❌ sync-one échoué #${shopifyProductId}: ${msg}`);
+      if (stack) logger.error(stack.split('\n').slice(0, 6).join(' | '));
+
+      const fatal =
+        /Target closed|browser has been closed|Session closed|Connection closed|Protocol error/i.test(msg);
+      if (fatal) {
+        logger.warn('⚠️ Erreur navigateur fatale — reset singleton');
+        try { await KimlandScraper.closeInstance(); } catch (_) {}
+      }
+
+      if (!res.headersSent) {
+        return res.status(500).json({
+          success: false,
+          error: true,
+          message: msg,
+          shopifyId: shopifyProductId
+        });
+      }
+    }
+  });
 });
 
 
@@ -1970,24 +1995,25 @@ async function runSyncAllJob() {
           await scraper.maybeRestartBrowser();
         } catch (_) {}
       } catch (err) {
-        logger.error(`❌ Sync job item ${titleHint}: ${err.message}`);
+        const msg = err && err.message ? err.message : String(err);
+        logger.error(`❌ Sync job item ${titleHint}: ${msg}`);
         syncJob.errors.push({
           shopifyId,
           title: titleHint,
           reference,
-          reason: err.message
+          reason: msg
         });
-        try {
-          await KimlandScraper.closeInstance();
-        } catch (_) {}
-        // reopen for next items
-        try {
-          await KimlandScraper.getInstance();
-        } catch (_) {}
+        // Reset navigateur seulement si Chromium est vraiment mort
+        if (/Target closed|browser has been closed|Session closed|Protocol error/i.test(msg)) {
+          try { await KimlandScraper.closeInstance(); } catch (_) {}
+          try { await KimlandScraper.getInstance(); } catch (_) {}
+        } else {
+          try { await scraper.maybeRestartBrowser(); } catch (_) {}
+          try { await KimlandScraper.getInstance(); } catch (_) {}
+        }
       }
 
-      // petite pause anti rate-limit
-      await new Promise((r) => setTimeout(r, 250));
+      await new Promise((r) => setTimeout(r, 400));
     }
 
     syncJob.message =
@@ -1995,13 +2021,11 @@ async function runSyncAllJob() {
     logger.info(`🎉 SYNC-ALL job: ${syncJob.message}`);
   } catch (error) {
     syncJob.message = 'Erreur fatale: ' + error.message;
-    logger.error('❌ SYNC-ALL job failed:', error.message);
+    logger.error('❌ SYNC-ALL job failed: ' + error.message);
   } finally {
     syncJob.running = false;
     syncJob.finishedAt = new Date().toISOString();
-    try {
-      await KimlandScraper.closeInstance();
-    } catch (_) {}
+    // Garde le navigateur ouvert pour le prochain sync (moins de RAM churn)
   }
 }
 
@@ -2163,6 +2187,111 @@ router.get('/fix-default-title-status', (req, res) => {
       title: fixDefaultJob.title,
       message: fixDefaultJob.message,
       finishedAt: fixDefaultJob.finishedAt
+    }
+  });
+});
+
+// =============================================
+// Hide Title / Standard picker on Parfum Testeur products
+// → Shopify "Default Title" = has_only_default_variant (theme hides selector)
+// =============================================
+const fixParfumJob = {
+  running: false,
+  current: 0,
+  total: 0,
+  fixed: 0,
+  skipped: 0,
+  errors: 0,
+  title: '',
+  message: '',
+  finishedAt: null
+};
+
+async function runFixParfumVariantsJob() {
+  const shopify = new ShopifyClient();
+  try {
+    const ids = await shopify.getCollectionProductIdsByTitles([
+      'PARFUM TESTEUR ORIGINAL',
+      'Parfum Testeur original',
+      'Parfum Testeur original💯'
+    ]);
+    const idList = [...ids];
+    fixParfumJob.total = idList.length;
+    fixParfumJob.current = 0;
+    fixParfumJob.fixed = 0;
+    fixParfumJob.skipped = 0;
+    fixParfumJob.errors = 0;
+
+    if (idList.length === 0) {
+      fixParfumJob.message = 'Aucun produit trouvé dans la collection Parfum Testeur';
+      return;
+    }
+
+    for (let i = 0; i < idList.length; i++) {
+      if (!fixParfumJob.running) break;
+      const id = idList[i];
+      fixParfumJob.current = i + 1;
+      try {
+        const result = await shopify.forceHiddenDefaultVariant(id);
+        fixParfumJob.title = result.title || String(id);
+        if (result.fixed) fixParfumJob.fixed++;
+        else fixParfumJob.skipped++;
+      } catch (e) {
+        fixParfumJob.errors++;
+        logger.warn(`⚠️ fix parfum #${id}: ${e.message}`);
+      }
+      await new Promise((r) => setTimeout(r, 200));
+    }
+
+    fixParfumJob.message =
+      `Terminé: ${fixParfumJob.fixed} corrigés, ${fixParfumJob.skipped} déjà OK, ${fixParfumJob.errors} erreurs`;
+    logger.info(`🎉 Parfum variants: ${fixParfumJob.message}`);
+  } catch (e) {
+    fixParfumJob.message = 'Erreur: ' + e.message;
+    logger.error(fixParfumJob.message);
+  } finally {
+    fixParfumJob.running = false;
+    fixParfumJob.finishedAt = new Date().toISOString();
+  }
+}
+
+router.post('/fix-parfum-variants-start', (req, res) => {
+  if (fixParfumJob.running) {
+    return res.json({ success: true, alreadyRunning: true, job: fixParfumJob });
+  }
+  fixParfumJob.running = true;
+  fixParfumJob.current = 0;
+  fixParfumJob.total = 0;
+  fixParfumJob.fixed = 0;
+  fixParfumJob.skipped = 0;
+  fixParfumJob.errors = 0;
+  fixParfumJob.title = '';
+  fixParfumJob.message = 'Démarrage...';
+  fixParfumJob.finishedAt = null;
+
+  res.json({ success: true, started: true });
+  setImmediate(() => {
+    runFixParfumVariantsJob().catch((e) => {
+      fixParfumJob.running = false;
+      fixParfumJob.message = e.message;
+      fixParfumJob.finishedAt = new Date().toISOString();
+    });
+  });
+});
+
+router.get('/fix-parfum-variants-status', (req, res) => {
+  res.json({
+    success: true,
+    job: {
+      running: fixParfumJob.running,
+      current: fixParfumJob.current,
+      total: fixParfumJob.total,
+      fixed: fixParfumJob.fixed,
+      skipped: fixParfumJob.skipped,
+      errors: fixParfumJob.errors,
+      title: fixParfumJob.title,
+      message: fixParfumJob.message,
+      finishedAt: fixParfumJob.finishedAt
     }
   });
 });

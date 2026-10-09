@@ -318,6 +318,7 @@ class ShopifyClient {
         productData.variantType ||
         (String(productData.title || '').toLowerCase().includes('montre') ? 'Dimension' : 'Taille');
 
+      // Signateur Confort: never set "Coût par article" (cost) on create
       if (sizes.length > 0) {
         variants = sizes.map((size, index) => {
           const label = String(size.size || size.value || 'Standard').trim() || 'Standard';
@@ -331,8 +332,7 @@ class ShopifyClient {
             fulfillment_service: 'manual',
             requires_shipping: true,
             taxable: false,
-            position: index + 1,
-            cost: (productData.costPrice || 0).toFixed(2)
+            position: index + 1
           };
         });
       } else {
@@ -346,8 +346,7 @@ class ShopifyClient {
           inventory_policy: 'deny',
           fulfillment_service: 'manual',
           requires_shipping: true,
-          taxable: false,
-          cost: (productData.costPrice || 0).toFixed(2)
+          taxable: false
         }];
       }
 
@@ -430,7 +429,7 @@ class ShopifyClient {
             option1: v.option1 || 'Standard',
             price: (productData.price !== undefined ? productData.price : parseFloat(v.price)).toFixed(2),
             sku: productData.reference || v.sku || '',
-            cost: (productData.costPrice !== undefined ? productData.costPrice : parseFloat(v.cost || 0)).toFixed(2),
+            // no cost — Signateur Confort does not set "Coût par article"
             inventory_quantity: v.inventory_quantity || 0,
             inventory_management: 'shopify',
             inventory_policy: v.inventory_policy || 'deny',
@@ -445,7 +444,6 @@ class ShopifyClient {
             option1: 'Standard',
             price: (productData.price || 0).toFixed(2),
             sku: productData.reference || '',
-            cost: (productData.costPrice || 0).toFixed(2),
             inventory_quantity: 0,
             inventory_management: 'shopify',
             inventory_policy: 'deny',
@@ -462,7 +460,6 @@ class ShopifyClient {
           option1: v.value || v.size || 'Standard',
           price: (productData.price !== undefined ? productData.price : v.price || 0).toFixed(2),
           sku: v.sku || productData.reference || '',
-          cost: (productData.costPrice !== undefined ? productData.costPrice : v.cost || 0).toFixed(2),
           inventory_quantity: v.quantity !== undefined ? v.quantity : 0,
           inventory_management: 'shopify',
           inventory_policy: 'deny',
@@ -827,20 +824,7 @@ class ShopifyClient {
             }
           }
 
-          // Cost
-          try {
-            if (sv.inventory_item_id) {
-              await this.retryRequest(async () => {
-                return await axios.put(
-                  `${this.baseUrl}/inventory_items/${sv.inventory_item_id}.json`,
-                  { inventory_item: { id: sv.inventory_item_id, cost: costPrice } },
-                  { headers: this.headers }
-                );
-              });
-            }
-          } catch (ce) {
-            logger.warn(`⚠️ Cost update failed for ${shopifyLabel}: ${ce.message}`);
-          }
+          // Cost intentionally NOT set (Signateur Confort — no "Coût par article")
 
           // Inventory from Kimland
           try {
@@ -885,15 +869,7 @@ class ShopifyClient {
             updatedCount++;
           } catch (_) {}
 
-          try {
-            if (sv.inventory_item_id) {
-              await axios.put(
-                `${this.baseUrl}/inventory_items/${sv.inventory_item_id}.json`,
-                { inventory_item: { id: sv.inventory_item_id, cost: costPrice } },
-                { headers: this.headers }
-              ).catch(() => {});
-            }
-          } catch (_) {}
+          // no cost update (Signateur Confort)
 
           try {
             await this.updateInventory(sv.id, 0);
@@ -960,15 +936,7 @@ class ShopifyClient {
             addedCount++;
             const kim = this.matchKimlandSize(sv.option1, kimlandSizeMap);
             const qty = kim ? kim.quantity : 0;
-            try {
-              if (sv.inventory_item_id) {
-                await axios.put(
-                  `${this.baseUrl}/inventory_items/${sv.inventory_item_id}.json`,
-                  { inventory_item: { id: sv.inventory_item_id, cost: costPrice } },
-                  { headers: this.headers }
-                );
-              }
-            } catch (_) {}
+            // no cost update (Signateur Confort)
             try {
               await this.updateInventory(sv.id, qty);
               inventoryResults.push({ size: sv.option1, quantity: qty, success: true, matched: true, added: true });
@@ -1052,20 +1020,26 @@ class ShopifyClient {
   }
 
   // =============================================
-  // SYNC PRICE + STOCK ONLY (no title / description / photos)
-  // Option B: also ADD missing sizes from Kimland
+  // SYNC VARIANTS ONLY (stock + missing sizes)
+  // Signateur Confort: do NOT update selling price or "Coût par article"
   // =============================================
   async syncPriceAndStock(shopifyProductId, kimlandData) {
     try {
-      logger.info(`🔄 SYNC price+stock for Shopify #${shopifyProductId}`);
+      logger.info(`🔄 SYNC variants/stock only for Shopify #${shopifyProductId} (no price, no cost)`);
 
       // Hard safety: never overwrite Shopify with empty/failed scrape
       const title = String(kimlandData?.title || '').trim();
-      const price = Number(kimlandData?.price || 0);
       const variants = kimlandData?.variants || kimlandData?.sizes || [];
-      if (!title || /^not\s*found$/i.test(title) || price <= 0) {
+      const price = Number(kimlandData?.price || 0);
+      // Allow sync if we have variants even when price is odd; still reject Not Found
+      if (!title || /^not\s*found$/i.test(title)) {
         throw new Error(
-          `Refusing sync: invalid Kimland data (title="${title}", price=${price}, variants=${variants.length})`
+          `Refusing sync: invalid Kimland data (title="${title}", variants=${variants.length})`
+        );
+      }
+      if (variants.length === 0 && price <= 0) {
+        throw new Error(
+          `Refusing sync: no variants and no price (title="${title}")`
         );
       }
 
@@ -1073,8 +1047,13 @@ class ShopifyClient {
       if (!existing) throw new Error(`Shopify product ${shopifyProductId} not found`);
 
       const kimlandVariants = kimlandData.variants || kimlandData.sizes || [];
-      const sellingPrice = (kimlandData.price || 0).toFixed(2);
-      const costPrice = (kimlandData.costPrice || 0).toFixed(2);
+      // Keep existing Shopify price when adding new sizes (do not push Kimland price/cost)
+      const fallbackPrice = (
+        (existing.variants && existing.variants[0] && existing.variants[0].price) ||
+        kimlandData.price ||
+        0
+      );
+      const sellingPrice = Number(fallbackPrice).toFixed(2);
       const reference = kimlandData.reference || '';
 
       const kimlandSizeMap = new Map();
@@ -1096,45 +1075,31 @@ class ShopifyClient {
       let matchedCount = 0;
       let addedCount = 0;
 
-      // --- Update existing variants (price + cost + stock), do not touch title/images ---
+      // --- Existing variants: STOCK only (no price, no cost) ---
       for (const sv of existingVariants) {
         const kim = this.matchKimlandSize(sv.option1, kimlandSizeMap);
         const shopifyLabel = String(sv.option1 || '').trim();
 
-        try {
-          await this.retryRequest(async () => {
-            return await axios.put(
-              `${this.baseUrl}/variants/${sv.id}.json`,
-              {
-                variant: {
-                  id: sv.id,
-                  price: sellingPrice,
-                  sku: reference || sv.sku || '',
-                  barcode: reference || sv.barcode || '',
-                  inventory_management: 'shopify',
-                  inventory_policy: 'deny'
-                }
-              },
-              { headers: this.headers }
-            );
-          });
-          updatedCount++;
-        } catch (e) {
-          logger.warn(`⚠️ Variant price update failed ${shopifyLabel}: ${e.message}`);
-        }
-
-        try {
-          if (sv.inventory_item_id) {
+        // Optional: keep SKU in sync, but never touch price or cost
+        if (reference) {
+          try {
             await this.retryRequest(async () => {
               return await axios.put(
-                `${this.baseUrl}/inventory_items/${sv.inventory_item_id}.json`,
-                { inventory_item: { id: sv.inventory_item_id, cost: costPrice } },
+                `${this.baseUrl}/variants/${sv.id}.json`,
+                {
+                  variant: {
+                    id: sv.id,
+                    sku: reference || sv.sku || '',
+                    barcode: reference || sv.barcode || ''
+                  }
+                },
                 { headers: this.headers }
               );
             });
+            updatedCount++;
+          } catch (e) {
+            logger.warn(`⚠️ Variant SKU update failed ${shopifyLabel}: ${e.message}`);
           }
-        } catch (e) {
-          logger.warn(`⚠️ Cost update failed ${shopifyLabel}: ${e.message}`);
         }
 
         if (kim) {
@@ -1206,15 +1171,7 @@ class ShopifyClient {
             addedCount++;
             const kim = this.matchKimlandSize(sv.option1, kimlandSizeMap);
             const qty = kim ? kim.quantity : 0;
-            try {
-              if (sv.inventory_item_id) {
-                await axios.put(
-                  `${this.baseUrl}/inventory_items/${sv.inventory_item_id}.json`,
-                  { inventory_item: { id: sv.inventory_item_id, cost: costPrice } },
-                  { headers: this.headers }
-                );
-              }
-            } catch (_) {}
+            // No cost update (Signateur Confort policy)
             try {
               await this.updateInventory(sv.id, qty);
               inventoryResults.push({ size: sv.option1, quantity: qty, success: true, added: true });
@@ -1233,19 +1190,22 @@ class ShopifyClient {
         shopifyId: shopifyProductId,
         title: existing.title,
         reference,
-        sellingPrice,
-        costPrice,
+        sellingPrice: null, // not updated
+        costPrice: null, // not updated
         variantsUpdated: updatedCount,
         variantsMatched: matchedCount,
         variantsAdded: addedCount,
         inventoryUpdates: inventoryResults,
-        // title / description / images intentionally NOT changed
         touchedTitle: false,
         touchedDescription: false,
-        touchedImages: false
+        touchedImages: false,
+        touchedPrice: false,
+        touchedCost: false
       };
 
-      logger.info(`🎉 SYNC COMPLETE #${shopifyProductId} | matched=${matchedCount} added=${addedCount} price=${sellingPrice} cost=${costPrice}`);
+      logger.info(
+        `🎉 SYNC COMPLETE #${shopifyProductId} | matched=${matchedCount} added=${addedCount} (variants/stock only, no price/cost)`
+      );
       return { success: true, report };
 
     } catch (error) {
@@ -1465,8 +1425,9 @@ class ShopifyClient {
   }
 
   /**
-   * Parfum / single-SKU products: force Shopify "Default Title" structure.
-   * Themes use product.has_only_default_variant → hide "Title" + "Standard" picker.
+   * Parfum / single-SKU products:
+   * 1) Force Shopify "Default Title" → theme hides Title/Standard picker
+   * 2) inventory_management = null → admin shows "Stock non suivi"
    */
   async forceHiddenDefaultVariant(productId) {
     const product = await this.getProduct(productId);
@@ -1477,26 +1438,22 @@ class ShopifyClient {
       return { fixed: false, reason: 'no_variants', title: product.title };
     }
 
-    // Already pure Default Title only
-    if (
-      variants.length === 1 &&
-      this.isDefaultTitleLabel(variants[0].option1) &&
-      String(variants[0].option1).toLowerCase().includes('default')
-    ) {
-      const optName = (product.options && product.options[0] && product.options[0].name) || '';
-      if (/^title$/i.test(optName) || !optName) {
-        return { fixed: false, reason: 'already_default', title: product.title };
-      }
-    }
-
-    // Keep first variant (parfums = 1 SKU); merge inventory if multiple
     const primary = variants[0];
-    let totalQty = 0;
-    for (const v of variants) {
-      totalQty += Number(v.inventory_quantity || 0);
+    const alreadyDefault =
+      variants.length === 1 &&
+      this.isDefaultTitleLabel(primary.option1) &&
+      String(primary.option1).toLowerCase().includes('default');
+    const alreadyUntracked =
+      primary.inventory_management === null ||
+      primary.inventory_management === undefined ||
+      primary.inventory_management === '';
+
+    if (alreadyDefault && alreadyUntracked) {
+      return { fixed: false, reason: 'already_ok', title: product.title };
     }
 
     try {
+      // Product-level update: Default Title + untracked stock
       await this.retryRequest(async () => {
         return await axios.put(
           `${this.baseUrl}/products/${productId}.json`,
@@ -1511,8 +1468,8 @@ class ShopifyClient {
                   price: primary.price,
                   sku: primary.sku || '',
                   barcode: primary.barcode || '',
-                  inventory_management: primary.inventory_management || 'shopify',
-                  inventory_policy: primary.inventory_policy || 'deny',
+                  // null = "Stock non suivi" in Shopify admin (FR)
+                  inventory_management: null,
                   fulfillment_service: primary.fulfillment_service || 'manual',
                   requires_shipping: primary.requires_shipping !== false,
                   taxable: false,
@@ -1525,13 +1482,28 @@ class ShopifyClient {
         );
       });
 
-      // Restore combined stock on the remaining variant
-      try {
-        await this.updateInventory(primary.id, totalQty);
-      } catch (_) {}
+      // Ensure every remaining variant is untracked (API sometimes needs per-variant PUT)
+      for (const v of variants) {
+        try {
+          await this.retryRequest(async () => {
+            return await axios.put(
+              `${this.baseUrl}/variants/${v.id}.json`,
+              {
+                variant: {
+                  id: v.id,
+                  inventory_management: null
+                }
+              },
+              { headers: this.headers }
+            );
+          });
+        } catch (e) {
+          logger.warn(`⚠️ Untrack variant #${v.id}: ${e.message}`);
+        }
+      }
 
-      logger.info(`✅ Parfum → Default Title (picker hidden): ${product.title}`);
-      return { fixed: true, action: 'default_title_hidden', title: product.title };
+      logger.info(`✅ Parfum → Default Title + Stock non suivi: ${product.title}`);
+      return { fixed: true, action: 'default_title_untracked', title: product.title };
     } catch (e) {
       logger.warn(`⚠️ forceHiddenDefaultVariant failed ${product.title}: ${e.message}`);
       return { fixed: false, reason: e.message, title: product.title };
